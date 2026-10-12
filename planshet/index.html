@@ -3,173 +3,885 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Dastavchik robot</title>
+<title>Dastavchik Robot — 3D Xarita va Chiziqsiz Navigatsiya</title>
 <style>
-  :root { --bg:#111418; --card:#1c2128; --txt:#e8eef4; --mut:#8a97a6; --acc:#2f9cf4; --ok:#3ccf7a; --bad:#ff5a5a; --warn:#f5a623; }
+  :root { --bg:#0d1117; --card:#161b22; --card2:#21262d; --txt:#e6edf3; --mut:#8b949e; --acc:#2f81f7; --ok:#2ea043; --bad:#f85149; --warn:#d29922; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body { margin:0; background:var(--bg); color:var(--txt); font:16px system-ui, sans-serif; padding:16px; user-select:none; -webkit-user-select:none; }
-  h1 { font-size:20px; margin:0 0 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px system-ui, -apple-system, sans-serif; padding:12px; user-select:none; -webkit-user-select:none; }
+  h1 { font-size:19px; margin:0 0 10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .row { display:flex; flex-wrap:wrap; gap:12px; }
-  .card { background:var(--card); border-radius:14px; padding:14px; flex:1 1 320px; }
-  button { background:#2a323c; color:var(--txt); border:0; border-radius:10px; padding:12px 14px; font-size:15px; touch-action:none; cursor:pointer; }
-  button:active { opacity:0.85; }
-  button.acc { background:var(--acc); color:#fff; font-weight:600; }
-  button.bad { background:var(--bad); color:#fff; font-weight:600; }
-  button.ok { background:var(--ok); color:#0b1a10; font-weight:600; }
-  .pad { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; max-width:330px; }
-  .pad button { height:76px; font-size:26px; }
-  .sens { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; max-width:330px; text-align:center; margin-top:8px; }
-  .sens div { background:#2a323c; border-radius:8px; padding:8px; }
-  .near { background:var(--bad) !important; color:#fff; font-weight:bold; }
-  .mut { color:var(--mut); font-size:14px; }
-  input, select { background:#2a323c; color:var(--txt); border:0; border-radius:8px; padding:10px; font-size:15px; }
-  ol { padding-left:22px; } li { margin:4px 0; }
-  #stat { font-size:14px; padding:4px 10px; border-radius:20px; background:#2a323c; }
-  #stat.on { color:#0b1a10; background:var(--ok); font-weight:600; }
-  #stat.sim { color:#1f1400; background:var(--warn); font-weight:600; }
-  .cam-box { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
-  .cam-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .card { background:var(--card); border:1px solid #30363d; border-radius:14px; padding:14px; flex:1 1 320px; }
+  .card.wide { flex:2 1 520px; }
+  button { background:var(--card2); color:var(--txt); border:1px solid #30363d; border-radius:10px; padding:10px 13px; font-size:14px; touch-action:none; cursor:pointer; font-weight:500; }
+  button:active { opacity:0.8; }
+  button.acc { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  button.ok { background:var(--ok); border-color:var(--ok); color:#fff; font-weight:600; }
+  button.bad { background:var(--bad); border-color:var(--bad); color:#fff; font-weight:600; }
+  button.active-tool { outline:2px solid var(--acc); background:#1f3a60; color:#fff; }
+  .bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px; }
+  .pad { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; max-width:290px; }
+  .pad button { height:62px; font-size:22px; }
+  .sens { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; max-width:290px; text-align:center; margin-top:8px; }
+  .sens div { background:var(--card2); border-radius:8px; padding:8px; font-weight:600; }
+  .near { background:var(--bad) !important; color:#fff; }
+  .mut { color:var(--mut); font-size:13px; }
+  input, select { background:var(--card2); color:var(--txt); border:1px solid #30363d; border-radius:8px; padding:8px 10px; font-size:14px; }
+  #stat { font-size:13px; padding:4px 10px; border-radius:20px; background:var(--card2); }
+  #stat.on { color:#fff; background:var(--ok); font-weight:600; }
+  #stat.sim { color:#000; background:var(--warn); font-weight:600; }
+  #mapWrap { position:relative; width:100%; height:400px; background:#090d12; border-radius:12px; border:1px solid #30363d; overflow:hidden; touch-action:none; }
+  #mapCanvas { width:100%; height:100%; display:block; }
+  .map-hud { position:absolute; top:8px; left:8px; background:rgba(13,17,23,0.82); padding:6px 10px; border-radius:8px; font-size:12px; pointer-events:none; border:1px solid #30363d; }
+  .map-legend { position:absolute; bottom:8px; left:8px; background:rgba(13,17,23,0.82); padding:5px 9px; border-radius:8px; font-size:12px; pointer-events:none; color:var(--mut); }
+  .st-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
 </style>
 </head>
 <body>
-<h1>Dastavchik robot <span id="stat" class="mut">ulanmagan</span></h1>
+<h1>
+  🤖 Dastavchik Robot — 3D Xarita (Chiziqsiz)
+  <span id="stat">ulanmagan</span>
+  <span id="gyroBadge" class="mut" style="margin-left:auto">🧭 Kurs: 0°</span>
+</h1>
 
 <div class="row">
+  <!-- 1. 3D XARITA VA CHIZIQSIZ NAVIGATSIYA -->
+  <div class="card wide">
+    <div class="bar">
+      <b>🏢 3D Bino Xaritasi va Navigatsiya</b>
+      <span style="margin-left:auto" class="bar">
+        <button id="viewModeBtn" class="acc">Ko'rinish: 3D</button>
+        <button id="load3dBtn" title=".OBJ yoki .STL 3D model faylini yuklash">📂 3D Model (.obj/.stl/.json)</button>
+        <input type="file" id="file3d" accept=".obj,.stl,.json" style="display:none">
+        <button id="resetMapBtn" title="Standart koridor xaritasini tiklash">🔄 Standart xarita</button>
+      </span>
+    </div>
+
+    <!-- Xarita tahrirlash asboblari -->
+    <div class="bar">
+      <span class="mut">Asbob:</span>
+      <button id="toolOrbit" class="active-tool">🖐 Aylantirish (3D)</button>
+      <button id="toolWall">🧱 Devor chizish/o'chirish</button>
+      <button id="toolRobot">🤖 Robot joyi</button>
+      <button id="toolStation">📍 Stansiya qo'shish</button>
+    </div>
+
+    <div id="mapWrap">
+      <canvas id="mapCanvas"></canvas>
+      <div class="map-hud" id="mapHud">
+        Robot: (1.5m, 5.5m) · Kurs: 0°<br>
+        Holat: Tayyor
+      </div>
+      <div class="map-legend">
+        🟦 Devor (3D) &nbsp;|&nbsp; 🟢 Robot va 4x Ultratovush nuri &nbsp;|&nbsp; 🟨 A* Marshrut &nbsp;|&nbsp; 📍 Xonalar
+      </div>
+    </div>
+
+    <!-- Stansiyalarga chiziqsiz yuborish -->
+    <div class="bar" style="margin-top:10px">
+      <b>Manzilga yuborish (chiziqsiz):</b>
+      <select id="destSelect" style="min-width:130px"></select>
+      <button class="ok" id="goMapBtn">🚀 Yetkazish (3D Xarita)</button>
+      <button class="acc" id="backBaseBtn">🏠 BAZAga qaytish</button>
+      <button class="bad" id="cancelNavBtn">⏹ To'xtatish</button>
+    </div>
+    <p class="mut" id="navStatus" style="margin:4px 0 0">
+      Chiziqsiz rejim: Robot 3D xarita (A* yo'l topish) + 4 ta ultratovush sensori (koridor devorlarini ushlash) + giroskop orqali harakatlanadi.
+    </p>
+  </div>
+
+  <!-- 2. ULANISH, SENSORLAR VA QO'LDA BOSHQARUV -->
   <div class="card">
-    <div class="cam-row">
-      <button class="acc" id="connect">USB ga ulanish</button>
-      <button id="simBtn" title="Arduinosiz test qilish">Simulyator (Test)</button>
+    <div class="bar">
+      <button class="acc" id="connect">🔌 USB ga ulanish</button>
+      <button id="simBtn" class="ok" title="Arduinosiz 3D xaritada test qilish">🧪 3D Simulyator</button>
       <button id="modeBtn">Rejim: Planshet</button>
       <button class="bad" id="stopBtn">STOP</button>
     </div>
-    <p class="mut">Tezlik: <input type="range" id="speed" min="80" max="255" value="170"> <span id="spv">170</span></p>
+
+    <div class="bar">
+      <label class="mut"><input type="checkbox" id="wallCenterChk" checked> Koridor o'rtasini avtomatik ushlash (Ultratovush)</label>
+    </div>
+
+    <b>Ultratovush Sensorlar (sm)</b>
+    <div class="sens">
+      <span></span><div id="sF">–</div><span></span>
+      <div id="sL">–</div><div id="blk">✓</div><div id="sR">–</div>
+      <span></span><div id="sB">–</div><span></span>
+    </div>
+    <p class="mut" style="margin:6px 0">Tezlik: <input type="range" id="speed" min="80" max="255" value="165"> <span id="spv">165</span> &nbsp;|&nbsp; <span id="cmdPreview">V 0 0 0</span></p>
+
     <div class="pad" id="pad">
       <button data-v="1,-1,0">↖</button><button data-v="1,0,0">▲</button><button data-v="1,1,0">↗</button>
       <button data-v="0,-1,0">◀</button><button data-v="0,0,0">■</button><button data-v="0,1,0">▶</button>
       <button data-v="-1,-1,0">↙</button><button data-v="-1,0,0">▼</button><button data-v="-1,1,0">↘</button>
       <button data-v="0,0,-1">⟲</button><span></span><button data-v="0,0,1">⟳</button>
     </div>
-    <p class="mut" id="cmdPreview" style="margin-bottom:0">Buyruq: V 0 0 0</p>
-  </div>
-
-  <div class="card">
-    <b>Sensorlar (sm)</b>
-    <div class="sens">
-      <span></span><div id="sF">–</div><span></span>
-      <div id="sL">–</div><div id="blk">✓</div><div id="sR">–</div>
-      <span></span><div id="sB">–</div><span></span>
-    </div>
-    <p class="mut">Qizil = 15 sm dan yaqin, robot o'sha tomonga yurmaydi.</p>
-    <div id="simControls" style="display:none; border-top:1px solid #2a323c; padding-top:8px; margin-top:8px;">
-      <b class="mut">Simulyator sensorlari (test uchun):</b>
-      <div class="cam-row" style="margin-top:6px">
-        <label class="mut">Old: <input type="number" id="simF" value="120" style="width:65px"></label>
-        <label class="mut">O'ng: <input type="number" id="simR" value="120" style="width:65px"></label>
-        <label class="mut">Orqa: <input type="number" id="simB" value="120" style="width:65px"></label>
-        <label class="mut">Chap: <input type="number" id="simL" value="120" style="width:65px"></label>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <b>Yetkazish marshrutlari</b>
-    <p class="mut">Marshrut = qadamlar ro'yxati. Yo'lda odam yoki to'siq chiqsa robot kutadi, yo'l ochilgach davom etadi.</p>
-    <div class="cam-row">
-      <select id="dir">
-        <option value="1,0,0">Oldinga</option><option value="-1,0,0">Orqaga</option>
-        <option value="0,1,0">O'ngga siljish</option><option value="0,-1,0">Chapga siljish</option>
-        <option value="0,0,1">O'ngga burilish</option><option value="0,0,-1">Chapga burilish</option>
-      </select>
-      <input id="secs" type="number" step="0.1" value="2" style="width:80px"> s
-      <button id="addStep">+ qadam</button>
-    </div>
-    <ol id="steps"></ol>
-    <div class="cam-row">
-      <input id="rname" placeholder="Nomi, masalan: 101-xona" style="width:200px">
-      <button id="saveR">Saqlash</button>
-    </div>
-    <div id="routes"></div>
-    <p class="mut" id="runInfo"></p>
-  </div>
-
-  <div class="card">
-    <b>Ko'rish tizimi (Ichki / USB / IP Kamera)</b>
-    <p class="mut">Ichki kamera, USB OTG veb-kamera (USB Hub orqali) yoki Wi-Fi IP kamerani (ESP32-CAM / IP Webcam) tanlang.</p>
-    <div class="cam-box">
-      <div class="cam-row">
-        <select id="camSource" style="flex:1; min-width:180px">
-          <option value="env">Orqa kamera (standart)</option>
-          <option value="user">Old kamera</option>
-          <option value="ip">Wi-Fi / IP kamera (URL)</option>
-          <option value="simcam">Virtual test kamera (Simulyator)</option>
-        </select>
-        <button id="refreshCams" title="USB kameralarni qidirish">🔄</button>
-        <button class="acc" id="camBtn">Kamerani yoqish</button>
-      </div>
-      <div id="ipCamRow" class="cam-row" style="display:none">
-        <input id="ipCamUrl" placeholder="http://192.168.43.1:8080/video yoki /shot.jpg" style="flex:1">
-      </div>
-      <label class="mut"><input type="checkbox" id="lightLine"> Chiziq och rangli (to'q polda)</label>
-    </div>
-
-    <div style="position:relative;max-width:360px;margin-top:8px">
-      <video id="cam" playsinline muted style="width:100%;border-radius:10px;background:#000;display:block"></video>
-      <img id="ipImg" crossorigin="anonymous" style="width:100%;border-radius:10px;background:#000;display:none" alt="IP kamera">
-      <canvas id="ov" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none"></canvas>
-    </div>
-    <p id="visInfo" class="mut">Kamera o'chiq</p>
-    <div class="cam-row">
-      <span>Manzil:</span>
-      <input id="dest" placeholder="101" style="width:90px" value="101">
-      <button class="acc" id="goVis">Yetkazish</button>
-      <button id="backVis">Bazaga qaytish</button>
-    </div>
-    <p class="mut">QR kodlarni chop etish: <a href="stansiyalar.html" style="color:var(--acc)">stansiyalar.html</a>. Baza QR kodi matni: BAZA</p>
   </div>
 </div>
 
 <script>
 (function() {
 const $ = id => document.getElementById(id);
-let vec = [0,0,0], running = null, tele = {blocked:false}, simMode = false, simTimer = null;
-const enc = new TextEncoder();
-const DIRNAMES = {"1,0,0":"Oldinga","-1,0,0":"Orqaga","0,1,0":"O'ngga siljish","0,-1,0":"Chapga siljish","0,0,1":"O'ngga burilish","0,0,-1":"Chapga burilish"};
 
+// ============================================================================
+// 1. 3D XARITA MA'LUMOTLARI (Grid: 16 x 14 katak, har bir katak = 0.5 metr => 8m x 7m bino)
+// ============================================================================
+const COLS = 16, ROWS = 14, CELL_M = 0.5; // 1 katak = 50 sm
+let grid = []; // 0 = bo'sh yo'lak, 1 = 3D devor
+let customMeshEdges = []; // Yuklangan .OBJ/.STL 3D model qirralari (agar yuklansa)
+let stations = {}; // { "BAZA": {x: 1.5, y: 5.5}, "101": {x: 1.5, y: 1.5}, ... }
+
+// Robotning xaritadagi holati (metrda va radianda; angle = -PI/2 -> tepaga/shimolga)
+let robot = { x: 1.5, y: 5.5, angle: -Math.PI / 2 };
+let gyroOffset = null, hasGyro = false;
+
+// Navigatsiya holati
+let navPath = [];      // [{x, y}, ...] metrda
+let navTargetName = '';
+let navActive = false;
+
+// Standart bino/koridor 3D xaritasi (H-simon / U-simon koridor va xonalar)
+function createDefaultMap() {
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  customMeshEdges = [];
+  // Tashqi devorlar
+  for (let c = 0; c < COLS; c++) { grid[0][c] = 1; grid[ROWS - 1][c] = 1; }
+  for (let r = 0; r < ROWS; r++) { grid[r][0] = 1; grid[r][COLS - 1] = 1; }
+
+  // Ichki devorlar (koridorlar hosil qilish: chap koridor, yuqori koridor, o'ng koridor)
+  for (let r = 4; r <= 10; r++) {
+    for (let c = 5; c <= 10; c++) grid[r][c] = 1;
+  }
+  // O'rtadagi xona bloki
+  stations = {
+    "BAZA": { x: 2.5 * CELL_M, y: 11.5 * CELL_M },
+    "101-xona": { x: 2.5 * CELL_M, y: 2.0 * CELL_M },
+    "102-xona": { x: 8.0 * CELL_M, y: 2.0 * CELL_M },
+    "103-xona": { x: 13.0 * CELL_M, y: 2.0 * CELL_M },
+    "104-xona": { x: 13.0 * CELL_M, y: 11.5 * CELL_M }
+  };
+  robot = { x: stations["BAZA"].x, y: stations["BAZA"].y, angle: -Math.PI / 2 };
+  navPath = [];
+  saveMapState();
+  updateStationDropdown();
+}
+
+function saveMapState() {
+  try {
+    localStorage.setItem('dastavchik_map3d', JSON.stringify({ grid, stations, robot }));
+  } catch (e) {}
+}
+
+function loadMapState() {
+  try {
+    const raw = localStorage.getItem('dastavchik_map3d');
+    if (!raw) return createDefaultMap();
+    const d = JSON.parse(raw);
+    if (d.grid && d.grid.length === ROWS && d.stations) {
+      grid = d.grid;
+      stations = d.stations;
+      if (d.robot) robot = d.robot;
+      updateStationDropdown();
+    } else createDefaultMap();
+  } catch (e) { createDefaultMap(); }
+}
+
+function updateStationDropdown() {
+  const sel = $('destSelect');
+  const prev = sel.value;
+  sel.innerHTML = Object.keys(stations).map(k => `<option value="${k}">${k}</option>`).join('');
+  if (Object.keys(stations).includes(prev)) sel.value = prev;
+  else if (stations["101-xona"]) sel.value = "101-xona";
+}
+
+$('resetMapBtn').onclick = () => {
+  stopNav();
+  createDefaultMap();
+};
+
+// ============================================================================
+// 2. .OBJ / .STL / .JSON 3D MODEL YUKLASH VA AVTOMATIK XARITAGA AYLANTIRISH
+// ============================================================================
+$('load3dBtn').onclick = () => $('file3d').click();
+$('file3d').onchange = async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const name = file.name.toLowerCase();
+  try {
+    if (name.endsWith('.json')) {
+      const txt = await file.text();
+      const d = JSON.parse(txt);
+      if (d.grid) grid = d.grid;
+      if (d.stations) stations = d.stations;
+      updateStationDropdown();
+      saveMapState();
+      $('navStatus').textContent = `JSON 3D xarita yuklandi: ${file.name}`;
+    } else if (name.endsWith('.obj')) {
+      const txt = await file.text();
+      parseObjTo3DMap(txt, file.name);
+    } else if (name.endsWith('.stl')) {
+      const buf = await file.arrayBuffer();
+      parseStlTo3DMap(buf, file.name);
+    }
+  } catch (e) {
+    alert('3D modelni o\'qishda xatolik: ' + e.message);
+  }
+  ev.target.value = '';
+};
+
+function parseObjTo3DMap(txt, fname) {
+  const verts = [];
+  const faces = [];
+  txt.split('\n').forEach(line => {
+    const p = line.trim().split(/\s+/);
+    if (p[0] === 'v' && p.length >= 4) {
+      verts.push([parseFloat(p[1]), parseFloat(p[2]), parseFloat(p[3])]);
+    } else if (p[0] === 'f' && p.length >= 4) {
+      const idx = p.slice(1).map(tok => parseInt(tok.split('/')[0], 10) - 1).filter(i => i >= 0);
+      if (idx.length >= 3) faces.push(idx);
+    }
+  });
+  if (!verts.length) throw new Error('OBJ faylda uchlar (vertices) topilmadi');
+  voxelizeMeshToGrid(verts, faces, fname);
+}
+
+function parseStlTo3DMap(buf, fname) {
+  const txt = new TextDecoder().decode(buf.slice(0, 200));
+  const verts = [], faces = [];
+  if (txt.trim().startsWith('solid') && new TextDecoder().decode(buf).includes('facet')) {
+    const full = new TextDecoder().decode(buf);
+    const re = /vertex\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)/g;
+    let m;
+    while ((m = re.exec(full)) !== null) {
+      verts.push([parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])]);
+      if (verts.length % 3 === 0) faces.push([verts.length - 3, verts.length - 2, verts.length - 1]);
+    }
+  } else {
+    // Binary STL
+    const dv = new DataView(buf);
+    const triCount = dv.getUint32(80, true);
+    let off = 84;
+    for (let i = 0; i < triCount && off + 50 <= buf.byteLength; i++) {
+      off += 12; // normal
+      for (let v = 0; v < 3; v++) {
+        verts.push([dv.getFloat32(off, true), dv.getFloat32(off + 4, true), dv.getFloat32(off + 8, true)]);
+        off += 12;
+      }
+      faces.push([verts.length - 3, verts.length - 2, verts.length - 1]);
+      off += 2;
+    }
+  }
+  if (!verts.length) throw new Error('STL faylda uchburchaklar topilmadi');
+  voxelizeMeshToGrid(verts, faces, fname);
+}
+
+// 3D modelni o'lchamiga moslab 16x14 grid devorlariga va 3D qirralarga aylantirish
+function voxelizeMeshToGrid(verts, faces, fname) {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  verts.forEach(([x, y, z]) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  });
+  // Eng katta 2 gorizontal o'qni topish (X-Z yoki X-Y)
+  const spanY = maxY - minY, spanZ = maxZ - minZ;
+  const useXZ = spanZ > spanY;
+  const hMin = useXZ ? minY : minZ, hMax = useXZ ? maxY : maxZ;
+  const wallMinH = hMin + (hMax - hMin) * 0.12; // Poldan balandroq qismlar = devor
+
+  const wSpan = (maxX - minX) || 1;
+  const dSpan = (useXZ ? (maxZ - minZ) : (maxY - minY)) || 1;
+
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  for (let c = 0; c < COLS; c++) { grid[0][c] = 1; grid[ROWS - 1][c] = 1; }
+  for (let r = 0; r < ROWS; r++) { grid[r][0] = 1; grid[r][COLS - 1] = 1; }
+
+  customMeshEdges = [];
+  faces.forEach(f => {
+    for (let i = 0; i < f.length; i++) {
+      const a = verts[f[i]], b = verts[f[(i + 1) % f.length]];
+      if (!a || !b) continue;
+      const ah = useXZ ? a[1] : a[2], bh = useXZ ? b[1] : b[2];
+      if (ah < wallMinH && bh < wallMinH) continue; // Pol yuzasi
+      const ax = 1 + ((a[0] - minX) / wSpan) * (COLS - 2);
+      const ay = 1 + (((useXZ ? a[2] - minZ : a[1] - minY)) / dSpan) * (ROWS - 2);
+      const bx = 1 + ((b[0] - minX) / wSpan) * (COLS - 2);
+      const by = 1 + (((useXZ ? b[2] - minZ : b[1] - minY)) / dSpan) * (ROWS - 2);
+      // Qirrani grid kataklariga tushirish
+      const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) * 2));
+      for (let s = 0; s <= steps; s++) {
+        const gx = Math.floor(ax + (bx - ax) * (s / steps));
+        const gy = Math.floor(ay + (by - ay) * (s / steps));
+        if (gy >= 0 && gy < ROWS && gx >= 0 && gx < COLS) grid[gy][gx] = 1;
+      }
+      if (customMeshEdges.length < 600) {
+        customMeshEdges.push([ax * CELL_M, ay * CELL_M, bx * CELL_M, by * CELL_M]);
+      }
+    }
+  });
+  saveMapState();
+  $('navStatus').textContent = `3D model (${fname}) yuklandi va devorlar kesimi olindi!`;
+}
+
+// ============================================================================
+// 3. ULTRATOVUSH RAYCASTING (3D Xaritada 4 tomondagi devorgacha masofa)
+// ============================================================================
+function isWallAtMeter(xm, ym) {
+  const c = Math.floor(xm / CELL_M), r = Math.floor(ym / CELL_M);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
+  return grid[r][c] === 1;
+}
+
+// Berilgan burchak bo'yicha devorgacha masofani (sm da) hisoblash (max 200 sm)
+function raycastCm(x, y, angRad) {
+  const stepM = 0.02; // 2 sm qadam
+  const maxM = 2.0;   // 200 sm
+  const dx = Math.cos(angRad), dy = Math.sin(angRad);
+  for (let d = 0.06; d <= maxM; d += stepM) {
+    if (isWallAtMeter(x + dx * d, y + dy * d)) {
+      return Math.max(5, Math.round((d - 0.06) * 100));
+    }
+  }
+  return 999;
+}
+
+// ============================================================================
+// 4. A* (A-STAR) YO'L TOPISH ALGORITMI (3D Xaritadagi koridorlar bo'ylab)
+// ============================================================================
+function findPathAStar(startX, startY, goalX, goalY) {
+  const sc = Math.max(1, Math.min(COLS - 2, Math.floor(startX / CELL_M)));
+  const sr = Math.max(1, Math.min(ROWS - 2, Math.floor(startY / CELL_M)));
+  const gc = Math.max(1, Math.min(COLS - 2, Math.floor(goalX / CELL_M)));
+  const gr = Math.max(1, Math.min(ROWS - 2, Math.floor(goalY / CELL_M)));
+
+  const key = (c, r) => `${c},${r}`;
+  const open = [{ c: sc, r: sr, g: 0, f: Math.hypot(gc - sc, gr - sr) }];
+  const cameFrom = {};
+  const gScore = { [key(sc, sr)]: 0 };
+  const closed = new Set();
+
+  // Devorga juda yaqin kataklarga jarima berish (robot koridor o'rtasidan yurishi uchun!)
+  function wallPenalty(c, r) {
+    let pen = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] === 1) pen += 0.6;
+      }
+    }
+    return pen;
+  }
+
+  const dirs = [
+    [0, -1, 1], [1, 0, 1], [0, 1, 1], [-1, 0, 1],
+    [1, -1, 1.414], [1, 1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]
+  ];
+
+  while (open.length > 0) {
+    open.sort((a, b) => a.f - b.f);
+    const cur = open.shift();
+    const ck = key(cur.c, cur.r);
+    if (cur.c === gc && cur.r === gr) {
+      const path = [];
+      let k = ck;
+      while (k) {
+        const [cc, rr] = k.split(',').map(Number);
+        path.unshift({ x: (cc + 0.5) * CELL_M, y: (rr + 0.5) * CELL_M });
+        k = cameFrom[k];
+      }
+      if (path.length > 1) path.shift(); // Boshlang'ich katakni o'tkazish
+      return path;
+    }
+    closed.add(ck);
+
+    for (const [dc, dr, cost] of dirs) {
+      const nc = cur.c + dc, nr = cur.r + dr;
+      if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+      if (grid[nr][nc] === 1) continue;
+      // Diagonal yurganda burchak devorga tegmasligi kerak
+      if (dc !== 0 && dr !== 0 && (grid[cur.r][nc] === 1 || grid[nr][cur.c] === 1)) continue;
+
+      const nk = key(nc, nr);
+      if (closed.has(nk)) continue;
+      const tentativeG = cur.g + cost + wallPenalty(nc, nr);
+      if (gScore[nk] === undefined || tentativeG < gScore[nk]) {
+        cameFrom[nk] = ck;
+        gScore[nk] = tentativeG;
+        const f = tentativeG + Math.hypot(gc - nc, gr - nr);
+        const ex = open.find(o => o.c === nc && o.r === nr);
+        if (ex) { ex.g = tentativeG; ex.f = f; }
+        else open.push({ c: nc, r: nr, g: tentativeG, f });
+      }
+    }
+  }
+  return null;
+}
+
+// ============================================================================
+// 5. 3D PERSPECTIVE + 2D RENDERER (WebGL/Canvas 3D dvigateli, 100% offline)
+// ============================================================================
+const canvas = $('mapCanvas');
+const ctx = canvas.getContext('2d');
+let is3D = true;
+let camYaw = -0.55, camPitch = 0.78, camZoom = 54;
+let activeTool = 'orbit';
+let dragging = false, lastMX = 0, lastMY = 0, paintWallVal = 1;
+
+$('viewModeBtn').onclick = () => {
+  is3D = !is3D;
+  $('viewModeBtn').textContent = 'Ko\'rinish: ' + (is3D ? '3D' : '2D');
+};
+
+function setTool(t) {
+  activeTool = t;
+  ['toolOrbit', 'toolWall', 'toolRobot', 'toolStation'].forEach(id => $(id).classList.remove('active-tool'));
+  if (t === 'orbit') $('toolOrbit').classList.add('active-tool');
+  if (t === 'wall') $('toolWall').classList.add('active-tool');
+  if (t === 'robot') $('toolRobot').classList.add('active-tool');
+  if (t === 'station') $('toolStation').classList.add('active-tool');
+}
+$('toolOrbit').onclick = () => setTool('orbit');
+$('toolWall').onclick = () => setTool('wall');
+$('toolRobot').onclick = () => setTool('robot');
+$('toolStation').onclick = () => setTool('station');
+
+// 3D nuqtani (xm, ym, zm) 2D ekran koordinatasiga proyeksiyalash
+function project3D(xm, ym, zm) {
+  const cx = (COLS * CELL_M) / 2, cy = (ROWS * CELL_M) / 2;
+  const dx = xm - cx, dy = ym - cy;
+  if (!is3D) {
+    const scale = Math.min(canvas.width / (COLS * CELL_M + 1), canvas.height / (ROWS * CELL_M + 1));
+    return {
+      x: canvas.width / 2 + dx * scale,
+      y: canvas.height / 2 + dy * scale,
+      depth: 0
+    };
+  }
+  const cosY = Math.cos(camYaw), sinY = Math.sin(camYaw);
+  const rx = dx * cosY - dy * sinY;
+  const ry = dx * sinY + dy * cosY;
+
+  const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
+  const py = ry * sinP - zm * cosP;
+  const depth = ry * cosP + zm * sinP + 9.5;
+  const fov = camZoom * (Math.min(canvas.width, canvas.height) / 380) * (9.5 / Math.max(2.5, depth));
+
+  return {
+    x: canvas.width / 2 + rx * fov,
+    y: canvas.height / 2 + py * fov + 15,
+    depth
+  };
+}
+
+// Ekrandagi (px, py) bosilgan joyni poldagi (xm, ym, zm=0) koordinataga qaytarish
+function screenToFloor(px, py) {
+  let best = { x: robot.x, y: robot.y }, bestDist = Infinity;
+  for (let r = 0; r < ROWS; r += 0.25) {
+    for (let c = 0; c < COLS; c += 0.25) {
+      const xm = c * CELL_M, ym = r * CELL_M;
+      const p = project3D(xm, ym, 0);
+      const d = Math.hypot(p.x - px, p.y - py);
+      if (d < bestDist) { bestDist = d; best = { x: xm, y: ym }; }
+    }
+  }
+  return best;
+}
+
+function handleMapPointer(px, py, isFirstDown) {
+  const pt = screenToFloor(px, py);
+  const c = Math.floor(pt.x / CELL_M), r = Math.floor(pt.y / CELL_M);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+
+  if (activeTool === 'wall') {
+    if (isFirstDown) paintWallVal = grid[r][c] === 1 ? 0 : 1;
+    grid[r][c] = paintWallVal;
+    saveMapState();
+  } else if (activeTool === 'robot' && isFirstDown) {
+    if (grid[r][c] === 0) {
+      robot.x = (c + 0.5) * CELL_M;
+      robot.y = (r + 0.5) * CELL_M;
+      saveMapState();
+    }
+  } else if (activeTool === 'station' && isFirstDown) {
+    if (grid[r][c] === 0) {
+      const stName = prompt('Yangi stansiya (xona) nomini kiriting:', '105-xona');
+      if (stName && stName.trim()) {
+        stations[stName.trim()] = { x: (c + 0.5) * CELL_M, y: (r + 0.5) * CELL_M };
+        updateStationDropdown();
+        saveMapState();
+      }
+    }
+  }
+}
+
+canvas.addEventListener('pointerdown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  dragging = true; lastMX = x; lastMY = y;
+  if (activeTool !== 'orbit') handleMapPointer(x, y, true);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if (activeTool === 'orbit') {
+    if (is3D) {
+      camYaw += (x - lastMX) * 0.008;
+      camPitch = Math.max(0.25, Math.min(1.45, camPitch + (y - lastMY) * 0.008));
+    }
+  } else if (activeTool === 'wall') {
+    handleMapPointer(x, y, false);
+  }
+  lastMX = x; lastMY = y;
+});
+window.addEventListener('pointerup', () => dragging = false);
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  camZoom = Math.max(28, Math.min(95, camZoom - e.deltaY * 0.04));
+}, { passive: false });
+
+function drawPoly(pts, fill, stroke, lw = 1) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+}
+
+function draw3DBlock(x0, y0, x1, y1, zH, topCol, sideCol1, sideCol2, strokeCol) {
+  const b00 = project3D(x0, y0, 0), b10 = project3D(x1, y0, 0), b11 = project3D(x1, y1, 0), b01 = project3D(x0, y1, 0);
+  if (!is3D) {
+    drawPoly([b00, b10, b11, b01], topCol, strokeCol, 1);
+    return;
+  }
+  const t00 = project3D(x0, y0, zH), t10 = project3D(x1, y0, zH), t11 = project3D(x1, y1, zH), t01 = project3D(x0, y1, zH);
+  // Yon devorlar (kamera burchagiga qarab saralangan)
+  const faces = [
+    { pts: [b00, b10, t10, t00], col: sideCol1, d: (b00.depth + b10.depth) / 2 },
+    { pts: [b10, b11, t11, t10], col: sideCol2, d: (b10.depth + b11.depth) / 2 },
+    { pts: [b11, b01, t01, t11], col: sideCol1, d: (b11.depth + b01.depth) / 2 },
+    { pts: [b01, b00, t00, t01], col: sideCol2, d: (b01.depth + b00.depth) / 2 }
+  ];
+  faces.sort((a, b) => b.d - a.d);
+  faces.forEach(f => drawPoly(f.pts, f.col, strokeCol, 0.7));
+  drawPoly([t00, t10, t11, t01], topCol, strokeCol, 0.9);
+}
+
+function renderMap() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  if (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height)) {
+    canvas.width = Math.floor(rect.width);
+    canvas.height = Math.floor(rect.height);
+  }
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // 1. Pol setkasi (Grid)
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x0 = c * CELL_M, y0 = r * CELL_M;
+      const p0 = project3D(x0, y0, 0), p1 = project3D(x0 + CELL_M, y0, 0),
+            p2 = project3D(x0 + CELL_M, y0 + CELL_M, 0), p3 = project3D(x0, y0 + CELL_M, 0);
+      drawPoly([p0, p1, p2, p3], (r + c) % 2 === 0 ? '#111822' : '#141c28', '#1e293b', 0.6);
+    }
+  }
+
+  // 2. A* Marshrut chizig'i (polda)
+  if (navPath.length > 0) {
+    ctx.beginPath();
+    const rp = project3D(robot.x, robot.y, 0.04);
+    ctx.moveTo(rp.x, rp.y);
+    navPath.forEach(wp => {
+      const p = project3D(wp.x, wp.y, 0.04);
+      ctx.lineTo(p.x, p.y);
+    });
+    ctx.strokeStyle = '#ffd400';
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    navPath.forEach(wp => {
+      const p = project3D(wp.x, wp.y, 0.05);
+      ctx.fillStyle = '#ffd400';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  // 3. 3D Devorlar va Robotni chuqurlik (depth) bo'yicha saralab chizish
+  const drawables = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] === 1) {
+        const xm = (c + 0.5) * CELL_M, ym = (r + 0.5) * CELL_M;
+        const d = project3D(xm, ym, 0.25).depth;
+        drawables.push({ type: 'wall', c, r, d });
+      }
+    }
+  }
+
+  Object.keys(stations).forEach(name => {
+    const st = stations[name];
+    const d = project3D(st.x, st.y, 0.2).depth;
+    drawables.push({ type: 'station', name, x: st.x, y: st.y, d });
+  });
+
+  drawables.push({ type: 'robot', d: project3D(robot.x, robot.y, 0.15).depth });
+  drawables.sort((a, b) => b.d - a.d);
+
+  drawables.forEach(item => {
+    if (item.type === 'wall') {
+      const x0 = item.c * CELL_M, y0 = item.r * CELL_M;
+      draw3DBlock(x0, y0, x0 + CELL_M, y0 + CELL_M, 0.55, '#2b5b84', '#1d3f5e', '#163048', '#3b82f6');
+    } else if (item.type === 'station') {
+      const pBase = project3D(item.x, item.y, 0);
+      const pTop = project3D(item.x, item.y, is3D ? 0.65 : 0);
+      const isBase = item.name.toUpperCase() === 'BAZA';
+      ctx.strokeStyle = isBase ? '#3ccf7a' : '#f5a623';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(pBase.x, pBase.y); ctx.lineTo(pTop.x, pTop.y); ctx.stroke();
+
+      ctx.fillStyle = isBase ? '#3ccf7a' : '#f5a623';
+      ctx.beginPath(); ctx.arc(pBase.x, pBase.y, 6, 0, Math.PI * 2); ctx.fill();
+
+      ctx.font = 'bold 12px system-ui';
+      const tw = ctx.measureText(item.name).width;
+      ctx.fillStyle = 'rgba(13,17,23,0.88)';
+      ctx.fillRect(pTop.x - tw / 2 - 5, pTop.y - 20, tw + 10, 18);
+      ctx.fillStyle = isBase ? '#3ccf7a' : '#ffd400';
+      ctx.fillText(item.name, pTop.x - tw / 2, pTop.y - 7);
+    } else if (item.type === 'robot') {
+      drawRobot3D();
+    }
+  });
+
+  requestAnimationFrame(renderMap);
+}
+
+function drawRobot3D() {
+  // 4 ta ultratovush sensori nurlari (Old=0, O'ng=+90°, Orqa=180°, Chap=-90°)
+  const sensorAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+  const sensorDists = [tele.F, tele.R, tele.B, tele.L];
+  const rCenter = project3D(robot.x, robot.y, 0.12);
+
+  sensorAngles.forEach((relAng, idx) => {
+    const dCm = Math.min(200, sensorDists[idx] || 200);
+    const dM = (dCm / 100);
+    const ang = robot.angle + relAng;
+    const ex = robot.x + Math.cos(ang) * dM;
+    const ey = robot.y + Math.sin(ang) * dM;
+    const pEnd = project3D(ex, ey, 0.12);
+
+    ctx.beginPath();
+    ctx.moveTo(rCenter.x, rCenter.y);
+    ctx.lineTo(pEnd.x, pEnd.y);
+    ctx.strokeStyle = dCm < 15 ? 'rgba(248,81,73,0.9)' : (dCm < 45 ? 'rgba(210,153,34,0.75)' : 'rgba(46,160,67,0.45)');
+    ctx.lineWidth = idx === 0 ? 2.5 : 1.5;
+    ctx.stroke();
+
+    if (dCm < 190) {
+      ctx.fillStyle = dCm < 15 ? '#f85149' : '#3ccf7a';
+      ctx.beginPath(); ctx.arc(pEnd.x, pEnd.y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  // Robot korpusi (3D kubik + old yo'nalish strelkasi)
+  const rad = 0.20;
+  draw3DBlock(robot.x - rad, robot.y - rad, robot.x + rad, robot.y + rad, 0.25, '#2ea043', '#238636', '#196c2e', '#7ee787');
+  const pNose = project3D(robot.x + Math.cos(robot.angle) * 0.34, robot.y + Math.sin(robot.angle) * 0.34, 0.26);
+  const pTop = project3D(robot.x, robot.y, 0.26);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(pTop.x, pTop.y); ctx.lineTo(pNose.x, pNose.y); ctx.stroke();
+}
+
+// ============================================================================
+// 6. SMARTFON GIROSKOPI / KOMPASI (DeviceOrientation)
+// ============================================================================
+window.addEventListener('deviceorientation', e => {
+  if (e.alpha !== null && e.alpha !== undefined) {
+    const rad = (-e.alpha * Math.PI) / 180;
+    if (gyroOffset === null) gyroOffset = robot.angle - rad;
+    hasGyro = true;
+    if (!simMode) {
+      robot.angle = normalizeAngle(rad + gyroOffset);
+    }
+  }
+});
+
+function normalizeAngle(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+// ============================================================================
+// 7. CHIZIQSIZ NAVIGATSIYA KONTROLLERI (A* + Ultratovush + Giroskop)
+// ============================================================================
+let vec = [0, 0, 0];
+let tele = { F: 999, R: 999, B: 999, L: 999, blocked: false };
+let simMode = false;
+
+function start3DNavigation(targetName) {
+  const st = stations[targetName];
+  if (!st) return alert('Stansiya topilmadi: ' + targetName);
+  if (!link && !simMode) {
+    // Agar foydalanuvchi hali USB ulamagan bo'lsa, avtomatik 3D Simulyatorni yoqamiz
+    toggleSim(true);
+  }
+  send('M T');
+  const path = findPathAStar(robot.x, robot.y, st.x, st.y);
+  if (!path || !path.length) {
+    $('navStatus').textContent = `❌ ${targetName} ga ochiq koridor yo'li topilmadi! Devorlarni tekshiring.`;
+    return;
+  }
+  navPath = path;
+  navTargetName = targetName;
+  navActive = true;
+  $('navStatus').textContent = `🚀 ${targetName} ga chiziqsiz ketilyapti (${navPath.length} ta nuqta)...`;
+}
+
+function stopNav() {
+  navActive = false;
+  navPath = [];
+  vec = [0, 0, 0];
+}
+
+$('goMapBtn').onclick = () => start3DNavigation($('destSelect').value);
+$('backBaseBtn').onclick = () => start3DNavigation('BAZA');
+$('cancelNavBtn').onclick = () => {
+  stopNav();
+  $('navStatus').textContent = '⏹ Navigatsiya to\'xtatildi.';
+};
+
+// Har 100 ms da robotning xaritadagi harakati va ultratovush orqali tekislanishi
+setInterval(() => {
+  const dt = 0.1; // 100 ms
+  const spdFactor = (+$('speed').value) / 170;
+  const maxLinSpeedMps = 0.42 * spdFactor; // ~42 sm/s
+  const maxRotSpeedRps = 1.45 * spdFactor; // ~83 grad/s
+
+  // 1) Agar Simulyator yoqilgan bo'lsa, 3D xaritadan virtual ultratovush masofalarini o'qiymiz
+  if (simMode) {
+    const f = raycastCm(robot.x, robot.y, robot.angle);
+    const r = raycastCm(robot.x, robot.y, robot.angle + Math.PI / 2);
+    const b = raycastCm(robot.x, robot.y, robot.angle + Math.PI);
+    const l = raycastCm(robot.x, robot.y, robot.angle - Math.PI / 2);
+    const blk = (vec[0] > 0 && f < 15) || (vec[0] < 0 && b < 15) || (vec[1] > 0 && r < 15) || (vec[1] < 0 && l < 15) ? 1 : 0;
+    onLine(`D ${f} ${r} ${b} ${l} T ${blk}`);
+  }
+
+  // 2) Chiziqsiz 3D Navigatsiya boshqaruvi
+  if (navActive && navPath.length > 0) {
+    if (tele.blocked && tele.F < 15) {
+      // Oldida to'siq bor — agar o'ng yoki chap ochiq bo'lsa, Mecanum bilan yonga aylanib o'tish
+      if (tele.R > 45) vec = [0, 0.65, 0];
+      else if (tele.L > 45) vec = [0, -0.65, 0];
+      else vec = [0, 0, 0];
+      $('navStatus').textContent = `⚠️ ${navTargetName}: Oldinda to'siq (${tele.F} sm), aylanib o'tish / kutish...`;
+    } else {
+      const wp = navPath[0];
+      const dx = wp.x - robot.x, dy = wp.y - robot.y;
+      const distToWp = Math.hypot(dx, dy);
+
+      if (distToWp < 0.18) {
+        navPath.shift();
+        if (navPath.length === 0) {
+          stopNav();
+          $('navStatus').textContent = `✅ ${navTargetName}: Manzilga muvaffaqiyatli yetib keldi!`;
+        }
+      } else {
+        const targetAng = Math.atan2(dy, dx);
+        const errAng = normalizeAngle(targetAng - robot.angle);
+
+        // Agar burchak farqi katta bo'lsa (> 25°), avval joyida buriladi
+        if (Math.abs(errAng) > 0.42) {
+          vec = [0, 0, Math.max(-0.85, Math.min(0.85, errAng * 1.6))];
+          $('navStatus').textContent = `🔄 ${navTargetName}: Yo'nalishga burilyapman (${Math.round(errAng * 180 / Math.PI)}°)...`;
+        } else {
+          // Oldinga yurish + Ultratovush yordamida koridor markazini ushlash (Wall-Centering)
+          let vxCmd = Math.min(0.85, Math.max(0.35, distToWp * 1.2));
+          if (tele.F < 45) vxCmd *= 0.5;
+
+          let vyCmd = 0;
+          if ($('wallCenterChk').checked) {
+            // Ikkala tomonda devor ko'rinsa (koridor ichida), Mecanum bilan o'rtaga tekislash
+            if (tele.L < 120 && tele.R < 120) {
+              const diffCm = tele.R - tele.L; // musbat bo'lsa o'ng tomon kengroq -> o'ngga siljish
+              vyCmd = Math.max(-0.45, Math.min(0.45, diffCm * 0.012));
+            } else if (tele.L < 35) {
+              vyCmd = 0.4; // chap devordan uzoqlashish
+            } else if (tele.R < 35) {
+              vyCmd = -0.4; // o'ng devordan uzoqlashish
+            }
+          }
+          const wCmd = Math.max(-0.6, Math.min(0.6, errAng * 1.3));
+          vec = [vxCmd, vyCmd, wCmd];
+          $('navStatus').textContent = `🚀 ${navTargetName} ga ketilyapti · Qoldi: ${navPath.length} qadam · Old: ${tele.F}sm | Chap: ${tele.L}sm | O'ng: ${tele.R}sm`;
+        }
+      }
+    }
+  } else if (!navActive && $('wallCenterChk').checked && Math.abs(vec[0]) > 0.1 && vec[1] === 0) {
+    // Qo'lda oldinga yurilayotganda ham koridor devorlaridan himoya
+    if (tele.L < 25 && tele.R > 35) vec[1] = 0.35;
+    else if (tele.R < 25 && tele.L > 35) vec[1] = -0.35;
+  }
+
+  // 3) Robot pozitsiyasini yangilash (Odometriya + Ultratovush devor korreksiyasi)
+  if ((link || simMode) && (Math.abs(vec[0]) > 0.01 || Math.abs(vec[1]) > 0.01 || Math.abs(vec[2]) > 0.01)) {
+    if (!hasGyro || simMode) {
+      robot.angle = normalizeAngle(robot.angle + vec[2] * maxRotSpeedRps * dt);
+    }
+    const moveVx = (tele.F < 15 && vec[0] > 0) || (tele.B < 15 && vec[0] < 0) ? 0 : vec[0];
+    const moveVy = (tele.R < 15 && vec[1] > 0) || (tele.L < 15 && vec[1] < 0) ? 0 : vec[1];
+
+    const worldDx = (moveVx * Math.cos(robot.angle) - moveVy * Math.sin(robot.angle)) * maxLinSpeedMps * dt;
+    const worldDy = (moveVx * Math.sin(robot.angle) + moveVy * Math.cos(robot.angle)) * maxLinSpeedMps * dt;
+
+    if (!isWallAtMeter(robot.x + worldDx, robot.y)) robot.x += worldDx;
+    if (!isWallAtMeter(robot.x, robot.y + worldDy)) robot.y += worldDy;
+
+    // Haqiqiy robotda ultratovush sensori orqali devorgacha masofa bo'yicha xaritadagi joylashuvni to'g'rilash (Localization)
+    if (!simMode && tele.F > 15 && tele.F < 120) {
+      const expectedF = raycastCm(robot.x, robot.y, robot.angle);
+      if (expectedF < 150 && Math.abs(expectedF - tele.F) < 35) {
+        const corrM = ((expectedF - tele.F) / 100) * 0.15;
+        const nx = robot.x + Math.cos(robot.angle) * corrM;
+        const ny = robot.y + Math.sin(robot.angle) * corrM;
+        if (!isWallAtMeter(nx, ny)) { robot.x = nx; robot.y = ny; }
+      }
+    }
+  }
+
+  const deg = Math.round(((robot.angle * 180) / Math.PI + 360) % 360);
+  $('gyroBadge').textContent = `🧭 Kurs: ${deg}°`;
+  $('mapHud').innerHTML = `Robot: (${robot.x.toFixed(2)}m, ${robot.y.toFixed(2)}m) · Kurs: ${deg}°<br>Manzil: ${navActive ? navTargetName : 'Kutish rejimida'}`;
+}, 100);
+
+// ============================================================================
+// 8. USB OTG / WEB SERIAL / ANDROID APK ALOQA TIZIMI
+// ============================================================================
 const BAUD = 115200;
-let link = null, sending = Promise.resolve();
-const dec = new TextDecoder(); let acc = '';
+const enc = new TextEncoder(), dec = new TextDecoder();
+let link = null, sending = Promise.resolve(), acc = '';
+
 function onData(bytes) {
   acc += typeof bytes === 'string' ? bytes : dec.decode(bytes, { stream: true });
   let i;
   while ((i = acc.indexOf('\n')) >= 0) { onLine(acc.slice(0, i).trim()); acc = acc.slice(i + 1); }
 }
-window.__onAndroidUsbData = (str) => onData(str);
-window.__onAndroidUsbConnected = () => {
-  $('stat').textContent = 'ulangan (USB)';
-  $('stat').className = 'on';
-};
-window.__onAndroidUsbError = (msg) => {
-  alert('USB xatosi: ' + msg);
-};
+window.__onAndroidUsbData = str => onData(str);
+window.__onAndroidUsbConnected = () => { $('stat').textContent = 'ulangan (USB)'; $('stat').className = 'on'; };
+window.__onAndroidUsbError = msg => alert('USB xatosi: ' + msg);
 window.__onAndroidUsbDisconnected = () => disconnected();
 
 async function openAndroidNativeUsb() {
   const res = window.AndroidUsb.connect(BAUD);
   if (res !== 'OK' && res !== 'PENDING') throw new Error(res);
-  return {
-    write: async (b) => {
-      const txt = typeof b === 'string' ? b : new TextDecoder().decode(b);
-      window.AndroidUsb.write(txt);
-    }
-  };
+  return { write: async b => window.AndroidUsb.write(typeof b === 'string' ? b : new TextDecoder().decode(b)) };
 }
 
 async function openWebUsb() {
   const dev = await navigator.usb.requestDevice({ filters: [
-    { vendorId: 0x2341 }, { vendorId: 0x2A03 },
-    { vendorId: 0x1A86 },
-    { vendorId: 0x10C4 }, { vendorId: 0x0403 },
-    { classCode: 2 },
+    { vendorId: 0x2341 }, { vendorId: 0x2A03 }, { vendorId: 0x1A86 }, { vendorId: 0x10C4 }, { vendorId: 0x0403 }, { classCode: 2 }
   ]});
   await dev.open();
   if (!dev.configuration) await dev.selectConfiguration(1);
@@ -217,7 +929,7 @@ async function openWebSerial() {
   (async () => {
     const reader = port.readable.getReader();
     try { while (true) { const { value, done } = await reader.read(); if (done) break; onData(value); } }
-    catch (e) { } finally { disconnected(); }
+    catch (e) {} finally { disconnected(); }
   })();
   return { write: b => writer.write(b) };
 }
@@ -234,20 +946,15 @@ async function openExeSerial() {
       if (txt) onData(txt);
     } catch { clearInterval(poll); disconnected(); }
   }, 100);
-  return {
-    write: b => {
-      const txt = typeof b === 'string' ? b : new TextDecoder().decode(b);
-      return fetch('/api/write', { method: 'POST', body: txt });
-    }
-  };
+  return { write: b => fetch('/api/write', { method: 'POST', body: typeof b === 'string' ? b : new TextDecoder().decode(b) }) };
 }
 
 function disconnected() {
   link = null;
   if (!simMode) {
-    stopRoute();
+    stopNav();
     $('stat').textContent = 'uzildi';
-    $('stat').className = 'mut';
+    $('stat').className = '';
   }
 }
 
@@ -259,7 +966,7 @@ $('connect').onclick = async () => {
     else if ((android || !('serial' in navigator)) && 'usb' in navigator) link = await openWebUsb();
     else if ('serial' in navigator) link = await openWebSerial();
     else if (location.protocol.startsWith('http')) link = await openExeSerial();
-    else return alert('Bu brauzer USB bilan ishlay olmaydi. Android\'da Google Chrome yoki APK ilovasidan foydalaning.');
+    else return alert('USB ulanish uchun Chrome yoki APK ilovasidan foydalaning.');
     $('stat').textContent = 'ulanmoqda...';
     setTimeout(() => { if (link) { $('stat').textContent = 'ulangan'; $('stat').className = 'on'; } }, 1500);
   } catch (e) { alert('Ulanib bo\'lmadi: ' + e.message); }
@@ -267,28 +974,20 @@ $('connect').onclick = async () => {
 
 function toggleSim(force) {
   simMode = typeof force === 'boolean' ? force : !simMode;
-  $('simControls').style.display = simMode ? 'block' : 'none';
   if (simMode) {
     link = { write: async () => {} };
-    $('stat').textContent = 'simulyator (test)';
+    $('stat').textContent = '3D Simulyator (Test)';
     $('stat').className = 'sim';
-    let simModeChar = 'T';
-    simTimer = setInterval(() => {
-      const f = +$('simF').value || 120, r = +$('simR').value || 120, b = +$('simB').value || 120, l = +$('simL').value || 120;
-      const blk = (vec[0] > 0 && f < 15) || (vec[0] < 0 && b < 15) || (vec[1] > 0 && r < 15) || (vec[1] < 0 && l < 15) ? 1 : 0;
-      onLine(`D ${f} ${r} ${b} ${l} ${simModeChar} ${blk}`);
-    }, 100);
   } else {
-    if (simTimer) { clearInterval(simTimer); simTimer = null; }
     link = null;
     $('stat').textContent = 'ulanmagan';
-    $('stat').className = 'mut';
+    $('stat').className = '';
   }
 }
 $('simBtn').onclick = () => toggleSim();
 
 function send(line) {
-  $('cmdPreview').textContent = 'Buyruq: ' + line;
+  $('cmdPreview').textContent = line;
   if (!link) return;
   const l = link;
   sending = sending.then(() => l.write(enc.encode(line + '\n'))).catch(() => {});
@@ -297,8 +996,10 @@ function send(line) {
 function onLine(l) {
   const p = l.split(' ');
   if (p[0] !== 'D' || p.length < 7) return;
-  [['sF',1],['sR',2],['sB',3],['sL',4]].forEach(([id,k]) => {
-    const d = +p[k]; $(id).textContent = d >= 999 ? '—' : d; $(id).classList.toggle('near', d < 15);
+  tele.F = +p[1]; tele.R = +p[2]; tele.B = +p[3]; tele.L = +p[4];
+  [['sF', tele.F], ['sR', tele.R], ['sB', tele.B], ['sL', tele.L]].forEach(([id, d]) => {
+    $(id).textContent = d >= 999 ? '—' : d;
+    $(id).classList.toggle('near', d < 15);
   });
   $('modeBtn').textContent = 'Rejim: ' + (p[5] === 'A' ? 'Avtonom' : 'Planshet');
   tele.blocked = p[6] === '1';
@@ -307,268 +1008,26 @@ function onLine(l) {
 
 setInterval(() => {
   const s = +$('speed').value;
-  send(`V ${vec[0]*s|0} ${vec[1]*s|0} ${vec[2]*s*0.7|0}`);
+  send(`V ${vec[0] * s | 0} ${vec[1] * s | 0} ${vec[2] * s * 0.7 | 0}`);
 }, 150);
 
 $('speed').oninput = () => $('spv').textContent = $('speed').value;
 $('pad').querySelectorAll('button').forEach(b => {
   const v = b.dataset.v.split(',').map(Number);
-  b.onpointerdown = () => { stopRoute(); vec = v; };
-  b.onpointerup = b.onpointerleave = () => { if (!running) vec = [0,0,0]; };
+  b.onpointerdown = () => {
+    stopNav();
+    if (!link && !simMode) toggleSim(true);
+    vec = v.slice();
+  };
+  b.onpointerup = b.onpointerleave = () => { if (!navActive) vec = [0, 0, 0]; };
 });
-$('stopBtn').onclick = () => { stopRoute(); vec = [0,0,0]; send('S'); send('M T'); };
-$('modeBtn').onclick = () => { stopRoute(); vec = [0,0,0]; send($('modeBtn').textContent.includes('Planshet') ? 'M A' : 'M T'); };
+$('stopBtn').onclick = () => { stopNav(); vec = [0, 0, 0]; send('S'); send('M T'); };
+$('modeBtn').onclick = () => { stopNav(); vec = [0, 0, 0]; send($('modeBtn').textContent.includes('Planshet') ? 'M A' : 'M T'); };
 
-let steps = [];
-const load = () => { try { return JSON.parse(localStorage.getItem('routes') || '{}'); } catch { return {}; } };
-const store = r => { try { localStorage.setItem('routes', JSON.stringify(r)); } catch {} };
-
-function drawSteps() {
-  $('steps').innerHTML = steps.map((s, i) => `<li>${DIRNAMES[s.v]} — ${s.t} s <button data-i="${i}">✕</button></li>`).join('');
-  $('steps').querySelectorAll('button').forEach(b => b.onclick = () => { steps.splice(+b.dataset.i, 1); drawSteps(); });
-}
-function drawRoutes() {
-  const r = load();
-  $('routes').innerHTML = Object.keys(r).map(n =>
-    `<p><b>${n}</b> <button class="acc" data-go="${n}">Borish</button> <button data-back="${n}">Qaytish</button> <button data-del="${n}">✕</button></p>`).join('');
-  $('routes').querySelectorAll('[data-go]').forEach(b => b.onclick = () => runRoute(load()[b.dataset.go], b.dataset.go));
-  $('routes').querySelectorAll('[data-back]').forEach(b => b.onclick = () => runRoute(reverse(load()[b.dataset.back]), b.dataset.back + ' (qaytish)'));
-  $('routes').querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const x = load(); delete x[b.dataset.del]; store(x); drawRoutes(); });
-}
-const reverse = st => st.slice().reverse().map(s => ({ v: s.v.split(',').map(n => -n).join(','), t: s.t }));
-
-$('addStep').onclick = () => { steps.push({ v: $('dir').value, t: +$('secs').value }); drawSteps(); };
-$('saveR').onclick = () => { const n = $('rname').value.trim(); if (!n || !steps.length) return; const r = load(); r[n] = steps; store(r); steps = []; drawSteps(); drawRoutes(); };
-
-function stopRoute() { task = null; if (running) { clearInterval(running); running = null; $('runInfo').textContent = ''; } }
-function runRoute(st, name) {
-  stopRoute(); send('M T');
-  let i = 0, left = st[0].t * 1000;
-  vec = st[0].v.split(',').map(Number);
-  running = setInterval(() => {
-    if (tele.blocked) { $('runInfo').textContent = `${name}: yo'l to'silgan, kutyapman...`; return; }
-    left -= 100;
-    if (left <= 0) {
-      if (++i >= st.length) { stopRoute(); vec = [0,0,0]; $('runInfo').textContent = `${name}: yetib keldi ✓`; return; }
-      left = st[i].t * 1000; vec = st[i].v.split(',').map(Number);
-    }
-    $('runInfo').textContent = `${name}: ${i + 1}/${st.length}-qadam`;
-  }, 100);
-}
-
-const W = 160, H = 120;
-const work = document.createElement('canvas'); work.width = W; work.height = H;
-const wctx = work.getContext('2d', { willReadFrequently: true });
-const video = $('cam'), ipImg = $('ipImg'), ov = $('ov'), octx = ov.getContext('2d');
-let camOn = false, camMode = 'video', line = null, lastSide = 1, qrBusy = false, lastQr = null, qrDetector = null, jsQR = null;
-let task = null, simAngle = 0;
-
-async function listCameras() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-  try {
-    const devs = await navigator.mediaDevices.enumerateDevices();
-    const sel = $('camSource');
-    const prev = sel.value;
-    sel.innerHTML = `
-      <option value="env">Orqa kamera (standart)</option>
-      <option value="user">Old kamera</option>
-      <option value="ip">Wi-Fi / IP kamera (URL)</option>
-      <option value="simcam">Virtual test kamera (Simulyator)</option>
-    `;
-    let usbIdx = 1;
-    devs.filter(d => d.kind === 'videoinput').forEach(d => {
-      if (!d.deviceId) return;
-      const opt = document.createElement('option');
-      opt.value = 'dev:' + d.deviceId;
-      opt.textContent = d.label || `Kamera #${usbIdx++} (USB / Ichki)`;
-      sel.appendChild(opt);
-    });
-    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
-  } catch (e) {}
-}
-$('refreshCams').onclick = listCameras;
-$('camSource').onchange = () => {
-  $('ipCamRow').style.display = $('camSource').value === 'ip' ? 'flex' : 'none';
-};
-listCameras();
-
-async function ensureQrEngine() {
-  if (qrDetector || jsQR) return;
-  if ('BarcodeDetector' in window) {
-    try { qrDetector = new BarcodeDetector({ formats: ['qr_code'] }); return; } catch {}
-  }
-  await new Promise((ok, no) => {
-    if (window.jsQR) { jsQR = window.jsQR; return ok(); }
-    const sc = document.createElement('script'); sc.src = 'lib/jsQR.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc);
-  }).catch(() => {});
-  jsQR = window.jsQR;
-}
-
-$('camBtn').onclick = async () => {
-  try {
-    await ensureQrEngine();
-    const src = $('camSource').value;
-    ov.width = W; ov.height = H;
-    if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
-
-    if (src === 'simcam') {
-      camMode = 'simcam';
-      video.style.display = 'none';
-      ipImg.style.display = 'none';
-      ov.style.position = 'static';
-      ov.style.background = '#111';
-      ov.style.borderRadius = '10px';
-      camOn = true;
-      requestAnimationFrame(frame);
-      return;
-    }
-
-    ov.style.position = 'absolute';
-    ov.style.background = 'transparent';
-
-    if (src === 'ip') {
-      const url = $('ipCamUrl').value.trim();
-      if (!url) return alert('IP kamera manzilini kiriting (masalan: http://192.168.43.1:8080/video)');
-      camMode = 'ip';
-      video.style.display = 'none';
-      ipImg.style.display = 'block';
-      ipImg.src = url;
-      camOn = true;
-      requestAnimationFrame(frame);
-      return;
-    }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      return alert('Kamera API topilmadi. Virtual test kamerani tanlang yoki ruxsatlarni tekshiring.');
-    }
-
-    camMode = 'video';
-    ipImg.style.display = 'none';
-    video.style.display = 'block';
-    const videoConstraint = src.startsWith('dev:')
-      ? { deviceId: { exact: src.slice(4) }, width: { ideal: 640 }, height: { ideal: 480 } }
-      : { facingMode: src === 'user' ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } };
-
-    const st = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
-    video.srcObject = st;
-    await video.play();
-    await listCameras();
-    camOn = true;
-    requestAnimationFrame(frame);
-  } catch (e) { alert('Kamera ochilmadi: ' + e.message); }
-};
-
-function rowCenter(px, y0, y1, light) {
-  let sum = 0, n = 0;
-  for (let y = y0; y < y1; y++) for (let x = 0; x < W; x++) { const k = (y * W + x) * 4; sum += px[k] + px[k+1] + px[k+2]; n++; }
-  const mean = sum / n, thr = 3 * 40;
-  let sx = 0, c = 0;
-  for (let y = y0; y < y1; y++) for (let x = 0; x < W; x++) {
-    const k = (y * W + x) * 4, v = px[k] + px[k+1] + px[k+2];
-    if (light ? v > mean + thr : v < mean - thr) { sx += x; c++; }
-  }
-  const rows = y1 - y0;
-  if (c < rows * 3 || c > rows * W * 0.6) return null;
-  return (sx / c) / (W / 2) - 1;
-}
-
-function drawSimCamera() {
-  simAngle += 0.03;
-  wctx.fillStyle = $('lightLine').checked ? '#222' : '#ddd';
-  wctx.fillRect(0, 0, W, H);
-  wctx.strokeStyle = $('lightLine').checked ? '#fff' : '#111';
-  wctx.lineWidth = 18;
-  wctx.beginPath();
-  const shift = Math.sin(simAngle) * 22;
-  wctx.moveTo(W / 2 + shift * 0.5, 0);
-  wctx.lineTo(W / 2 + shift, H);
-  wctx.stroke();
-}
-
-function frame() {
-  if (!camOn) return;
-  if (camMode === 'simcam') {
-    drawSimCamera();
-  } else if (camMode === 'ip') {
-    try { wctx.drawImage(ipImg, 0, 0, W, H); } catch (e) {}
-  } else {
-    wctx.drawImage(video, 0, 0, W, H);
-  }
-  const px = wctx.getImageData(0, 0, W, H).data, light = $('lightLine').checked;
-  const near = rowCenter(px, 95, 115, light), far = rowCenter(px, 55, 75, light);
-  line = near === null ? null : { near, far: far === null ? near : far };
-  if (line) lastSide = line.near >= 0 ? 1 : -1;
-
-  octx.clearRect(0, 0, W, H);
-  if (camMode === 'simcam') octx.drawImage(work, 0, 0);
-  octx.strokeStyle = '#ffd400'; octx.lineWidth = 1;
-  [[55, 75], [95, 115]].forEach(([a, b]) => octx.strokeRect(0, a, W, b - a));
-  if (line) {
-    octx.fillStyle = '#3ccf7a';
-    octx.beginPath(); octx.arc((line.near + 1) * W / 2, 105, 4, 0, 7); octx.fill();
-    octx.beginPath(); octx.arc((line.far + 1) * W / 2, 65, 4, 0, 7); octx.fill();
-  }
-  if (!qrBusy && camMode !== 'simcam') scanQr();
-  if (!task) $('visInfo').textContent = (line ? 'Chiziq ko\'rinyapti' : 'Chiziq ko\'rinmayapti') + (lastQr ? ` · QR: ${lastQr.text}` : '');
-  requestAnimationFrame(frame);
-}
-
-async function scanQr() {
-  qrBusy = true;
-  try {
-    let hit = null;
-    const srcEl = camMode === 'ip' ? ipImg : video;
-    if (qrDetector && camMode === 'video') {
-      const r = await qrDetector.detect(srcEl);
-      if (r.length) hit = { text: r[0].rawValue.trim(), h: r[0].boundingBox.height / (video.videoHeight || 480) };
-    } else if (jsQR) {
-      const big = document.createElement('canvas'); big.width = 320; big.height = 240;
-      const bctx = big.getContext('2d'); bctx.drawImage(srcEl, 0, 0, 320, 240);
-      const r = jsQR(bctx.getImageData(0, 0, 320, 240).data, 320, 240);
-      if (r) hit = { text: r.data.trim(), h: Math.abs(r.location.bottomLeftCorner.y - r.location.topLeftCorner.y) / 240 };
-    }
-    lastQr = hit ? { ...hit, t: Date.now() } : (lastQr && Date.now() - lastQr.t < 1000 ? lastQr : null);
-  } catch (e) { }
-  setTimeout(() => qrBusy = false, 250);
-}
-
-function visionStep() {
-  const s = task; if (!s) return;
-  const base = 0.6;
-  if (tele.blocked) { vec = [0, 0, 0]; $('visInfo').textContent = `${s.dest}: yo'l to'silgan, kutyapman...`; return; }
-  if (s.phase === 'turn') {
-    vec = [0, 0, 0.6];
-    if (Date.now() - s.since > 1500 && line && Math.abs(line.near) < 0.3) { s.phase = 'follow'; s.since = Date.now(); }
-    $('visInfo').textContent = `${s.dest}: orqaga burilyapman...`;
-    return;
-  }
-  if (lastQr && lastQr.text.toUpperCase() === s.dest.toUpperCase() && lastQr.h > 0.18) {
-    stopRoute(); vec = [0, 0, 0];
-    $('visInfo').textContent = `${s.dest}: yetib keldi ✓`; return;
-  }
-  if (!line) {
-    if (!s.lost) s.lost = Date.now();
-    if (Date.now() - s.lost > 3000) { stopRoute(); vec = [0, 0, 0]; $('visInfo').textContent = 'Chiziq topilmadi, to\'xtadim'; return; }
-    vec = [0, 0, 0.35 * lastSide]; $('visInfo').textContent = `${s.dest}: chiziqni qidiryapman...`; return;
-  }
-  s.lost = 0;
-  const angle = line.far - line.near;
-  const off = line.near;
-  vec = [base * (1 - Math.min(0.6, Math.abs(angle))), 0.5 * off, 0.8 * angle + 0.3 * off];
-  $('visInfo').textContent = `${s.dest} ga ketyapman · ${line ? 'chiziq ✓' : ''}`;
-}
-
-function startVision(dest, turnFirst) {
-  if (!camOn) return alert('Avval kamerani yoqing');
-  if (!dest) return alert('Manzilni kiriting (QR kod matni, masalan 101)');
-  stopRoute(); send('M T');
-  task = { dest, phase: turnFirst ? 'turn' : 'follow', since: Date.now(), lost: 0 };
-  running = setInterval(visionStep, 100);
-}
-$('goVis').onclick = () => startVision($('dest').value.trim(), false);
-$('backVis').onclick = () => startVision('BAZA', true);
-
-drawSteps(); drawRoutes();
+// Dastlabki yuklash va 3D Simulyatorni yoqib qo'yish (darhol ishlashi uchun)
+loadMapState();
+toggleSim(true);
+requestAnimationFrame(renderMap);
 })();
 </script>
 </body>
