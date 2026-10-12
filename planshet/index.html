@@ -2,12 +2,12 @@
 <html lang="uz">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Dastavchik robot</title>
 <style>
   :root { --bg:#111418; --card:#1c2128; --txt:#e8eef4; --mut:#8a97a6; --acc:#2f9cf4; --ok:#3ccf7a; --bad:#ff5a5a; --warn:#f5a623; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt); font:16px system-ui, sans-serif; padding:16px; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px system-ui, sans-serif; padding:16px; user-select:none; -webkit-user-select:none; }
   h1 { font-size:20px; margin:0 0 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .row { display:flex; flex-wrap:wrap; gap:12px; }
   .card { background:var(--card); border-radius:14px; padding:14px; flex:1 1 320px; }
@@ -128,16 +128,13 @@
   </div>
 </div>
 
-<script type="module">
+<script>
+(function() {
 const $ = id => document.getElementById(id);
 let vec = [0,0,0], running = null, tele = {blocked:false}, simMode = false, simTimer = null;
 const enc = new TextEncoder();
 const DIRNAMES = {"1,0,0":"Oldinga","-1,0,0":"Orqaga","0,1,0":"O'ngga siljish","0,-1,0":"Chapga siljish","0,0,1":"O'ngga burilish","0,0,-1":"Chapga burilish"};
 
-// ---------- USB aloqa ----------
-// 1) Android APK ichida: window.AndroidUsb (Native Android UsbManager — CDC-ACM va CH340)
-// 2) Android Chrome da: WebUSB
-// 3) Kompyuter (Chrome/Edge/EXE): Web Serial yoki lokal EXE Serial API
 const BAUD = 115200;
 let link = null, sending = Promise.resolve();
 const dec = new TextDecoder(); let acc = '';
@@ -147,6 +144,13 @@ function onData(bytes) {
   while ((i = acc.indexOf('\n')) >= 0) { onLine(acc.slice(0, i).trim()); acc = acc.slice(i + 1); }
 }
 window.__onAndroidUsbData = (str) => onData(str);
+window.__onAndroidUsbConnected = () => {
+  $('stat').textContent = 'ulangan (USB)';
+  $('stat').className = 'on';
+};
+window.__onAndroidUsbError = (msg) => {
+  alert('USB xatosi: ' + msg);
+};
 window.__onAndroidUsbDisconnected = () => disconnected();
 
 async function openAndroidNativeUsb() {
@@ -162,10 +166,10 @@ async function openAndroidNativeUsb() {
 
 async function openWebUsb() {
   const dev = await navigator.usb.requestDevice({ filters: [
-    { vendorId: 0x2341 }, { vendorId: 0x2A03 },   // asl Arduino
-    { vendorId: 0x1A86 },                         // CH340 / CH341 klonlar
-    { vendorId: 0x10C4 }, { vendorId: 0x0403 },   // CP210x / FTDI
-    { classCode: 2 },                             // boshqa CDC-ACM qurilmalar
+    { vendorId: 0x2341 }, { vendorId: 0x2A03 },
+    { vendorId: 0x1A86 },
+    { vendorId: 0x10C4 }, { vendorId: 0x0403 },
+    { classCode: 2 },
   ]});
   await dev.open();
   if (!dev.configuration) await dev.selectConfiguration(1);
@@ -261,7 +265,6 @@ $('connect').onclick = async () => {
   } catch (e) { alert('Ulanib bo\'lmadi: ' + e.message); }
 };
 
-// ---------- Simulyator (Arduinosiz test rejimi) ----------
 function toggleSim(force) {
   simMode = typeof force === 'boolean' ? force : !simMode;
   $('simControls').style.display = simMode ? 'block' : 'none';
@@ -316,7 +319,6 @@ $('pad').querySelectorAll('button').forEach(b => {
 $('stopBtn').onclick = () => { stopRoute(); vec = [0,0,0]; send('S'); send('M T'); };
 $('modeBtn').onclick = () => { stopRoute(); vec = [0,0,0]; send($('modeBtn').textContent.includes('Planshet') ? 'M A' : 'M T'); };
 
-// ---------- Marshrutlar ----------
 let steps = [];
 const load = () => { try { return JSON.parse(localStorage.getItem('routes') || '{}'); } catch { return {}; } };
 const store = r => { try { localStorage.setItem('routes', JSON.stringify(r)); } catch {} };
@@ -354,7 +356,6 @@ function runRoute(st, name) {
   }, 100);
 }
 
-// ---------- Ko'rish tizimi: Ichki kamera, Tashqi USB kamera, IP kamera va Simulyator ----------
 const W = 160, H = 120;
 const work = document.createElement('canvas'); work.width = W; work.height = H;
 const wctx = work.getContext('2d', { willReadFrequently: true });
@@ -362,7 +363,6 @@ const video = $('cam'), ipImg = $('ipImg'), ov = $('ov'), octx = ov.getContext('
 let camOn = false, camMode = 'video', line = null, lastSide = 1, qrBusy = false, lastQr = null, qrDetector = null, jsQR = null;
 let task = null, simAngle = 0;
 
-// Ulangan USB UVC va ichki kameralarni ro'yxatga olish
 async function listCameras() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
   try {
@@ -438,6 +438,10 @@ $('camBtn').onclick = async () => {
       return;
     }
 
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return alert('Kamera API topilmadi. Virtual test kamerani tanlang yoki ruxsatlarni tekshiring.');
+    }
+
     camMode = 'video';
     ipImg.style.display = 'none';
     video.style.display = 'block';
@@ -448,7 +452,7 @@ $('camBtn').onclick = async () => {
     const st = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
     video.srcObject = st;
     await video.play();
-    await listCameras(); // Ruxsat olingach USB kamera nomlari chiqadi
+    await listCameras();
     camOn = true;
     requestAnimationFrame(frame);
   } catch (e) { alert('Kamera ochilmadi: ' + e.message); }
@@ -565,6 +569,7 @@ $('goVis').onclick = () => startVision($('dest').value.trim(), false);
 $('backVis').onclick = () => startVision('BAZA', true);
 
 drawSteps(); drawRoutes();
+})();
 </script>
 </body>
 </html>

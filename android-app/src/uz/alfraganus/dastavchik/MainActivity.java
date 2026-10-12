@@ -14,20 +14,25 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 public class MainActivity extends Activity {
     private static final String ACTION_USB_PERMISSION = "uz.alfraganus.dastavchik.USB_PERMISSION";
+    private static final String VIRTUAL_HOST = "appassets.androidplatform.net";
     private WebView webView;
     private UsbManager usbManager;
     private UsbDeviceConnection usbConn;
@@ -42,7 +47,14 @@ public class MainActivity extends Activity {
             if (ACTION_USB_PERMISSION.equals(action)) {
                 UsbDevice dev = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false) && dev != null) {
-                    openDevice(dev, currentBaud);
+                    String res = openDevice(dev, currentBaud);
+                    if ("OK".equals(res)) {
+                        runJs("window.__onAndroidUsbConnected && window.__onAndroidUsbConnected();");
+                    } else {
+                        runJs("window.__onAndroidUsbError && window.__onAndroidUsbError('" + res + "');");
+                    }
+                } else {
+                    runJs("window.__onAndroidUsbError && window.__onAndroidUsbError('USB ruxsat berilmadi');");
                 }
             } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
                 closeUsb();
@@ -74,29 +86,71 @@ public class MainActivity extends Activity {
         WebSettings ws = webView.getSettings();
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
+        ws.setDatabaseEnabled(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setAllowFileAccess(true);
         ws.setAllowContentAccess(true);
-        ws.setAllowFileAccessFromFileURLs(true);
-        ws.setAllowUniversalAccessFromFileURLs(true);
         ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                if (uri != null && VIRTUAL_HOST.equals(uri.getHost())) {
+                    String path = uri.getPath();
+                    if (path == null || path.equals("/") || path.isEmpty()) {
+                        path = "/index.html";
+                    }
+                    String assetPath = "planshet" + path;
+                    try {
+                        InputStream is = getAssets().open(assetPath);
+                        String mime = "text/html";
+                        if (path.endsWith(".js")) mime = "application/javascript";
+                        else if (path.endsWith(".css")) mime = "text/css";
+                        else if (path.endsWith(".png")) mime = "image/png";
+                        return new WebResourceResponse(mime, "UTF-8", is);
+                    } catch (Exception e) {
+                        return new WebResourceResponse("text/plain", "UTF-8", null);
+                    }
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+        });
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(() -> request.grant(request.getResources()));
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        request.grant(request.getResources());
+                    }
+                });
             }
         });
 
         webView.addJavascriptInterface(new UsbBridge(), "AndroidUsb");
         setContentView(webView);
-        webView.loadUrl("file:///android_asset/planshet/index.html");
+        webView.loadUrl("https://" + VIRTUAL_HOST + "/index.html");
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     private void runJs(final String js) {
         if (webView != null) {
-            webView.post(() -> webView.evaluateJavascript(js, null));
+            webView.post(new Runnable() {
+                @Override
+                public void run() {
+                    webView.evaluateJavascript(js, null);
+                }
+            });
         }
     }
 
@@ -123,12 +177,11 @@ public class MainActivity extends Activity {
         }
         if (dataIf == null) return "USB bulk interfeys topilmadi";
         usbConn = usbManager.openDevice(dev);
-        if (usbConn == null) return "USB qurilmani ochib bo'lmadi";
+        if (usbConn == null) return "USB qurilmani ochib bolmadi";
         if (ctrlIf != null && ctrlIf != dataIf) usbConn.claimInterface(ctrlIf, true);
         usbConn.claimInterface(dataIf, true);
 
         if (dev.getVendorId() == 0x1A86) {
-            // CH340 init
             usbConn.controlTransfer(0xC0, 0x5F, 0, 0, new byte[8], 8, 500);
             usbConn.controlTransfer(0x40, 0xA1, 0, 0, null, 0, 500);
             int factor = 1532620800 / baud;
@@ -141,7 +194,6 @@ public class MainActivity extends Activity {
             usbConn.controlTransfer(0x40, 0x9A, 0x2518, 0x00C3, null, 0, 500);
             usbConn.controlTransfer(0x40, 0xA4, ~((1 << 5) | (1 << 6)) & 0xFF, 0, null, 0, 500);
         } else {
-            // CDC-ACM init
             int ctrlIdx = ctrlIf != null ? ctrlIf.getId() : dataIf.getId();
             byte[] line = new byte[]{
                 (byte) (baud & 0xFF), (byte) ((baud >> 8) & 0xFF),
@@ -153,14 +205,17 @@ public class MainActivity extends Activity {
         }
 
         reading = true;
-        new Thread(() -> {
-            byte[] buf = new byte[64];
-            while (reading && usbConn != null) {
-                int n = usbConn.bulkTransfer(epIn, buf, buf.length, 200);
-                if (n > 0) {
-                    String s = new String(buf, 0, n, StandardCharsets.UTF_8)
-                            .replace("\\", "\\\\").replace("'", "\\'").replace("\r", "").replace("\n", "\\n");
-                    runJs("window.__onAndroidUsbData && window.__onAndroidUsbData('" + s + "');");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                byte[] buf = new byte[64];
+                while (reading && usbConn != null) {
+                    int n = usbConn.bulkTransfer(epIn, buf, buf.length, 200);
+                    if (n > 0) {
+                        String s = new String(buf, 0, n, StandardCharsets.UTF_8)
+                                .replace("\\", "\\\\").replace("'", "\\'").replace("\r", "").replace("\n", "\\n");
+                        runJs("window.__onAndroidUsbData && window.__onAndroidUsbData('" + s + "');");
+                    }
                 }
             }
         }).start();
@@ -192,8 +247,10 @@ public class MainActivity extends Activity {
             }
             if (target == null) return "Arduino topilmadi";
             if (!usbManager.hasPermission(target)) {
+                Intent permIntent = new Intent(ACTION_USB_PERMISSION);
+                permIntent.setPackage(getPackageName());
                 int flags = Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0;
-                PendingIntent pi = PendingIntent.getBroadcast(MainActivity.this, 0, new Intent(ACTION_USB_PERMISSION), flags);
+                PendingIntent pi = PendingIntent.getBroadcast(MainActivity.this, 0, permIntent, flags);
                 usbManager.requestPermission(target, pi);
                 return "PENDING";
             }
