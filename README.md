@@ -5,6 +5,10 @@
 - **Buyurtmachi:** Navoiy viloyati Ichki ishlar boshqarmasi (IIB)
 - **Bajaruvchi:** Navoiy Davlat Konchilik va texnologiyalar universiteti (NDKTU)
 
+### 🛡️ Loyiha Chizmasi, UI Arxitekturasi va Imkoniyatlari Monogrammasi
+![QALQON Monogramma](planshet/img/qalqon_monogramma.jpg)
+
+### 🖼️ Konseptual Modellari (Konsepsiya A va B)
 ![QALQON Konsepsiya 1](planshet/img/qalqon_1.jpg)
 ![QALQON Konsepsiya 2](planshet/img/qalqon_2.jpg)
 
