@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stansiya QR kodlari</title>
+<script src="lib/qrcode.js"></script>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 16px; background: #fff; color: #000; }
+  .grid { display: flex; flex-wrap: wrap; gap: 24px; }
+  .st { text-align: center; border: 1px dashed #999; padding: 12px; page-break-inside: avoid; }
+  .st svg { width: 6cm; height: 6cm; }
+  .st b { display: block; font-size: 28px; }
+  @media print { .np { display: none; } }
+</style>
+</head>
+<body>
+<div class="np">
+  <h2>Stansiya QR kodlari</h2>
+  <p>Xona raqamlarini vergul bilan yozing. Har bir QR kodni chiziq yonidagi devorga, kamera balandligida yopishtiring.</p>
+  <input id="names" value="BAZA, 101, 102, 103" style="width:280px;padding:8px">
+  <button onclick="draw()">Yaratish</button> <button onclick="print()">Chop etish</button>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+function draw() {
+  const g = document.getElementById('grid'); g.innerHTML = '';
+  document.getElementById('names').value.split(',').map(s => s.trim()).filter(Boolean).forEach(n => {
+    const q = qrcode(0, 'M'); q.addData(n); q.make();
+    const d = document.createElement('div'); d.className = 'st';
+    d.innerHTML = q.createSvgTag(8, 4) + '<b></b>'; d.querySelector('b').textContent = n;
+    g.appendChild(d);
+  });
+}
+draw();
+</script>
+</body>
+</html>
