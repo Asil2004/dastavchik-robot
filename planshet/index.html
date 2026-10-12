@@ -5,24 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dastavchik robot</title>
 <style>
-  :root { --bg:#111418; --card:#1c2128; --txt:#e8eef4; --mut:#8a97a6; --acc:#2f9cf4; --ok:#3ccf7a; --bad:#ff5a5a; }
+  :root { --bg:#111418; --card:#1c2128; --txt:#e8eef4; --mut:#8a97a6; --acc:#2f9cf4; --ok:#3ccf7a; --bad:#ff5a5a; --warn:#f5a623; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--txt); font:16px system-ui, sans-serif; padding:16px; }
-  h1 { font-size:20px; margin:0 0 12px; }
+  h1 { font-size:20px; margin:0 0 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .row { display:flex; flex-wrap:wrap; gap:12px; }
   .card { background:var(--card); border-radius:14px; padding:14px; flex:1 1 320px; }
-  button { background:#2a323c; color:var(--txt); border:0; border-radius:10px; padding:14px; font-size:16px; touch-action:none; }
-  button.acc { background:var(--acc); }
-  button.bad { background:var(--bad); }
+  button { background:#2a323c; color:var(--txt); border:0; border-radius:10px; padding:12px 14px; font-size:15px; touch-action:none; cursor:pointer; }
+  button:active { opacity:0.85; }
+  button.acc { background:var(--acc); color:#fff; font-weight:600; }
+  button.bad { background:var(--bad); color:#fff; font-weight:600; }
+  button.ok { background:var(--ok); color:#0b1a10; font-weight:600; }
   .pad { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; max-width:330px; }
-  .pad button { height:80px; font-size:26px; }
-  .sens { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; max-width:330px; text-align:center; }
+  .pad button { height:76px; font-size:26px; }
+  .sens { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; max-width:330px; text-align:center; margin-top:8px; }
   .sens div { background:#2a323c; border-radius:8px; padding:8px; }
-  .near { background:var(--bad) !important; }
+  .near { background:var(--bad) !important; color:#fff; font-weight:bold; }
   .mut { color:var(--mut); font-size:14px; }
-  input, select { background:#2a323c; color:var(--txt); border:0; border-radius:8px; padding:10px; font-size:16px; }
+  input, select { background:#2a323c; color:var(--txt); border:0; border-radius:8px; padding:10px; font-size:15px; }
   ol { padding-left:22px; } li { margin:4px 0; }
-  #stat.on { color:var(--ok); }
+  #stat { font-size:14px; padding:4px 10px; border-radius:20px; background:#2a323c; }
+  #stat.on { color:#0b1a10; background:var(--ok); font-weight:600; }
+  #stat.sim { color:#1f1400; background:var(--warn); font-weight:600; }
+  .cam-box { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .cam-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 </style>
 </head>
 <body>
@@ -30,9 +36,12 @@
 
 <div class="row">
   <div class="card">
-    <button class="acc" id="connect">USB ga ulanish</button>
-    <button id="modeBtn">Rejim: Planshet</button>
-    <button class="bad" id="stopBtn">STOP</button>
+    <div class="cam-row">
+      <button class="acc" id="connect">USB ga ulanish</button>
+      <button id="simBtn" title="Arduinosiz test qilish">Simulyator (Test)</button>
+      <button id="modeBtn">Rejim: Planshet</button>
+      <button class="bad" id="stopBtn">STOP</button>
+    </div>
     <p class="mut">Tezlik: <input type="range" id="speed" min="80" max="255" value="170"> <span id="spv">170</span></p>
     <div class="pad" id="pad">
       <button data-v="1,-1,0">↖</button><button data-v="1,0,0">▲</button><button data-v="1,1,0">↗</button>
@@ -40,6 +49,7 @@
       <button data-v="-1,-1,0">↙</button><button data-v="-1,0,0">▼</button><button data-v="-1,1,0">↘</button>
       <button data-v="0,0,-1">⟲</button><span></span><button data-v="0,0,1">⟳</button>
     </div>
+    <p class="mut" id="cmdPreview" style="margin-bottom:0">Buyruq: V 0 0 0</p>
   </div>
 
   <div class="card">
@@ -50,71 +60,117 @@
       <span></span><div id="sB">–</div><span></span>
     </div>
     <p class="mut">Qizil = 15 sm dan yaqin, robot o'sha tomonga yurmaydi.</p>
+    <div id="simControls" style="display:none; border-top:1px solid #2a323c; padding-top:8px; margin-top:8px;">
+      <b class="mut">Simulyator sensorlari (test uchun):</b>
+      <div class="cam-row" style="margin-top:6px">
+        <label class="mut">Old: <input type="number" id="simF" value="120" style="width:65px"></label>
+        <label class="mut">O'ng: <input type="number" id="simR" value="120" style="width:65px"></label>
+        <label class="mut">Orqa: <input type="number" id="simB" value="120" style="width:65px"></label>
+        <label class="mut">Chap: <input type="number" id="simL" value="120" style="width:65px"></label>
+      </div>
+    </div>
   </div>
 
   <div class="card">
     <b>Yetkazish marshrutlari</b>
     <p class="mut">Marshrut = qadamlar ro'yxati. Yo'lda odam yoki to'siq chiqsa robot kutadi, yo'l ochilgach davom etadi.</p>
-    <select id="dir">
-      <option value="1,0,0">Oldinga</option><option value="-1,0,0">Orqaga</option>
-      <option value="0,1,0">O'ngga siljish</option><option value="0,-1,0">Chapga siljish</option>
-      <option value="0,0,1">O'ngga burilish</option><option value="0,0,-1">Chapga burilish</option>
-    </select>
-    <input id="secs" type="number" step="0.1" value="2" style="width:80px"> s
-    <button id="addStep">+ qadam</button>
+    <div class="cam-row">
+      <select id="dir">
+        <option value="1,0,0">Oldinga</option><option value="-1,0,0">Orqaga</option>
+        <option value="0,1,0">O'ngga siljish</option><option value="0,-1,0">Chapga siljish</option>
+        <option value="0,0,1">O'ngga burilish</option><option value="0,0,-1">Chapga burilish</option>
+      </select>
+      <input id="secs" type="number" step="0.1" value="2" style="width:80px"> s
+      <button id="addStep">+ qadam</button>
+    </div>
     <ol id="steps"></ol>
-    <input id="rname" placeholder="Nomi, masalan: 101-xona" style="width:200px">
-    <button id="saveR">Saqlash</button>
+    <div class="cam-row">
+      <input id="rname" placeholder="Nomi, masalan: 101-xona" style="width:200px">
+      <button id="saveR">Saqlash</button>
+    </div>
     <div id="routes"></div>
     <p class="mut" id="runInfo"></p>
   </div>
+
   <div class="card">
-    <b>Ko'rish tizimi (kamera)</b>
-    <p class="mut">Telefon/planshet robot oldida, kamerasi oldinga-pastga (polga) qaragan bo'ladi. Robot poldagi lenta chizig'i bo'ylab yuradi, xonalarni QR kodlardan taniydi.</p>
-    <button id="camBtn">Kamerani yoqish</button>
-    <label class="mut"><input type="checkbox" id="lightLine"> Chiziq och rangli (to'q polda)</label>
+    <b>Ko'rish tizimi (Ichki / USB / IP Kamera)</b>
+    <p class="mut">Ichki kamera, USB OTG veb-kamera (USB Hub orqali) yoki Wi-Fi IP kamerani (ESP32-CAM / IP Webcam) tanlang.</p>
+    <div class="cam-box">
+      <div class="cam-row">
+        <select id="camSource" style="flex:1; min-width:180px">
+          <option value="env">Orqa kamera (standart)</option>
+          <option value="user">Old kamera</option>
+          <option value="ip">Wi-Fi / IP kamera (URL)</option>
+          <option value="simcam">Virtual test kamera (Simulyator)</option>
+        </select>
+        <button id="refreshCams" title="USB kameralarni qidirish">🔄</button>
+        <button class="acc" id="camBtn">Kamerani yoqish</button>
+      </div>
+      <div id="ipCamRow" class="cam-row" style="display:none">
+        <input id="ipCamUrl" placeholder="http://192.168.43.1:8080/video yoki /shot.jpg" style="flex:1">
+      </div>
+      <label class="mut"><input type="checkbox" id="lightLine"> Chiziq och rangli (to'q polda)</label>
+    </div>
+
     <div style="position:relative;max-width:360px;margin-top:8px">
-      <video id="cam" playsinline muted style="width:100%;border-radius:10px;background:#000"></video>
-      <canvas id="ov" style="position:absolute;left:0;top:0;width:100%;height:100%"></canvas>
+      <video id="cam" playsinline muted style="width:100%;border-radius:10px;background:#000;display:block"></video>
+      <img id="ipImg" crossorigin="anonymous" style="width:100%;border-radius:10px;background:#000;display:none" alt="IP kamera">
+      <canvas id="ov" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none"></canvas>
     </div>
     <p id="visInfo" class="mut">Kamera o'chiq</p>
-    <p>Manzil: <input id="dest" placeholder="101" style="width:90px">
+    <div class="cam-row">
+      <span>Manzil:</span>
+      <input id="dest" placeholder="101" style="width:90px" value="101">
       <button class="acc" id="goVis">Yetkazish</button>
-      <button id="backVis">Bazaga qaytish</button></p>
+      <button id="backVis">Bazaga qaytish</button>
+    </div>
     <p class="mut">QR kodlarni chop etish: <a href="stansiyalar.html" style="color:var(--acc)">stansiyalar.html</a>. Baza QR kodi matni: BAZA</p>
   </div>
 </div>
 
 <script type="module">
 const $ = id => document.getElementById(id);
-let vec = [0,0,0], running = null, tele = {blocked:false};
+let vec = [0,0,0], running = null, tele = {blocked:false}, simMode = false, simTimer = null;
 const enc = new TextEncoder();
 const DIRNAMES = {"1,0,0":"Oldinga","-1,0,0":"Orqaga","0,1,0":"O'ngga siljish","0,-1,0":"Chapga siljish","0,0,1":"O'ngga burilish","0,0,-1":"Chapga burilish"};
 
 // ---------- USB aloqa ----------
-// Android (planshet ham, telefon ham): WebUSB orqali o'zimizning drayver.
-//   Asl Arduino Uno (CDC-ACM) va xitoy klonlari (CH340) ikkalasi ham ishlaydi.
-// Kompyuterda: Chrome'ning Web Serial'i.
+// 1) Android APK ichida: window.AndroidUsb (Native Android UsbManager — CDC-ACM va CH340)
+// 2) Android Chrome da: WebUSB
+// 3) Kompyuter (Chrome/Edge/EXE): Web Serial yoki lokal EXE Serial API
 const BAUD = 115200;
 let link = null, sending = Promise.resolve();
 const dec = new TextDecoder(); let acc = '';
 function onData(bytes) {
-  acc += dec.decode(bytes, { stream: true });
+  acc += typeof bytes === 'string' ? bytes : dec.decode(bytes, { stream: true });
   let i;
   while ((i = acc.indexOf('\n')) >= 0) { onLine(acc.slice(0, i).trim()); acc = acc.slice(i + 1); }
+}
+window.__onAndroidUsbData = (str) => onData(str);
+window.__onAndroidUsbDisconnected = () => disconnected();
+
+async function openAndroidNativeUsb() {
+  const res = window.AndroidUsb.connect(BAUD);
+  if (res !== 'OK' && res !== 'PENDING') throw new Error(res);
+  return {
+    write: async (b) => {
+      const txt = typeof b === 'string' ? b : new TextDecoder().decode(b);
+      window.AndroidUsb.write(txt);
+    }
+  };
 }
 
 async function openWebUsb() {
   const dev = await navigator.usb.requestDevice({ filters: [
     { vendorId: 0x2341 }, { vendorId: 0x2A03 },   // asl Arduino
     { vendorId: 0x1A86 },                         // CH340 / CH341 klonlar
+    { vendorId: 0x10C4 }, { vendorId: 0x0403 },   // CP210x / FTDI
     { classCode: 2 },                             // boshqa CDC-ACM qurilmalar
   ]});
   await dev.open();
   if (!dev.configuration) await dev.selectConfiguration(1);
   const ifs = dev.configuration.interfaces;
   const ch340 = dev.vendorId === 0x1A86;
-  // Ma'lumot interfeysi: bulk IN va OUT endpointlari bor interfeys
   const dataIf = ifs.find(i => i.alternates[0].endpoints.some(e => e.type === 'bulk' && e.direction === 'in')
                              && i.alternates[0].endpoints.some(e => e.type === 'bulk' && e.direction === 'out'));
   const epIn = dataIf.alternates[0].endpoints.find(e => e.type === 'bulk' && e.direction === 'in');
@@ -125,7 +181,6 @@ async function openWebUsb() {
   const vendorOut = (request, value, index) =>
     dev.controlTransferOut({ requestType: 'vendor', recipient: 'device', request, value, index });
   if (ch340) {
-    // CH340 sozlash (Linux ch341 drayveri va usb-serial-for-android bo'yicha)
     await dev.controlTransferIn({ requestType: 'vendor', recipient: 'device', request: 0x5F, value: 0, index: 0 }, 8);
     await vendorOut(0xA1, 0, 0);
     let factor = Math.floor(1532620800 / BAUD), divisor = 3;
@@ -133,8 +188,8 @@ async function openWebUsb() {
     factor = 0x10000 - factor; divisor |= 0x80;
     await vendorOut(0x9A, 0x1312, (factor & 0xFF00) | divisor);
     await vendorOut(0x9A, 0x0F2C, factor & 0xFF);
-    await vendorOut(0x9A, 0x2518, 0x00C3);          // 8N1, qabul/uzatish yoqilgan
-    await vendorOut(0xA4, ~((1 << 5) | (1 << 6)) & 0xFF, 0);  // DTR+RTS
+    await vendorOut(0x9A, 0x2518, 0x00C3);
+    await vendorOut(0xA4, ~((1 << 5) | (1 << 6)) & 0xFF, 0);
   } else {
     const line = new Uint8Array([BAUD & 255, (BAUD >> 8) & 255, (BAUD >> 16) & 255, BAUD >>> 24, 0, 0, 8]);
     await dev.controlTransferOut({ requestType: 'class', recipient: 'interface', request: 0x20, value: 0, index: ctrlIf.interfaceNumber }, line);
@@ -163,22 +218,76 @@ async function openWebSerial() {
   return { write: b => writer.write(b) };
 }
 
-function disconnected() { link = null; stopRoute(); $('stat').textContent = 'uzildi'; $('stat').className = 'mut'; }
+async function openExeSerial() {
+  const r = await fetch('/api/connect', { method: 'POST' });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'COM port topilmadi');
+  const poll = setInterval(async () => {
+    try {
+      const res = await fetch('/api/read');
+      if (!res.ok) throw new Error();
+      const txt = await res.text();
+      if (txt) onData(txt);
+    } catch { clearInterval(poll); disconnected(); }
+  }, 100);
+  return {
+    write: b => {
+      const txt = typeof b === 'string' ? b : new TextDecoder().decode(b);
+      return fetch('/api/write', { method: 'POST', body: txt });
+    }
+  };
+}
+
+function disconnected() {
+  link = null;
+  if (!simMode) {
+    stopRoute();
+    $('stat').textContent = 'uzildi';
+    $('stat').className = 'mut';
+  }
+}
 
 $('connect').onclick = async () => {
   try {
+    if (simMode) toggleSim(false);
     const android = /Android/i.test(navigator.userAgent);
-    if ((android || !('serial' in navigator)) && 'usb' in navigator) link = await openWebUsb();
+    if (window.AndroidUsb) link = await openAndroidNativeUsb();
+    else if ((android || !('serial' in navigator)) && 'usb' in navigator) link = await openWebUsb();
     else if ('serial' in navigator) link = await openWebSerial();
-    else return alert('Bu brauzer USB bilan ishlay olmaydi. Android\'da Google Chrome\'dan foydalaning.');
+    else if (location.protocol.startsWith('http')) link = await openExeSerial();
+    else return alert('Bu brauzer USB bilan ishlay olmaydi. Android\'da Google Chrome yoki APK ilovasidan foydalaning.');
     $('stat').textContent = 'ulanmoqda...';
-    setTimeout(() => { if (link) { $('stat').textContent = 'ulangan'; $('stat').className = 'on'; } }, 2000); // Arduino qayta yuklanadi
+    setTimeout(() => { if (link) { $('stat').textContent = 'ulangan'; $('stat').className = 'on'; } }, 1500);
   } catch (e) { alert('Ulanib bo\'lmadi: ' + e.message); }
 };
 
+// ---------- Simulyator (Arduinosiz test rejimi) ----------
+function toggleSim(force) {
+  simMode = typeof force === 'boolean' ? force : !simMode;
+  $('simControls').style.display = simMode ? 'block' : 'none';
+  if (simMode) {
+    link = { write: async () => {} };
+    $('stat').textContent = 'simulyator (test)';
+    $('stat').className = 'sim';
+    let simModeChar = 'T';
+    simTimer = setInterval(() => {
+      const f = +$('simF').value || 120, r = +$('simR').value || 120, b = +$('simB').value || 120, l = +$('simL').value || 120;
+      const blk = (vec[0] > 0 && f < 15) || (vec[0] < 0 && b < 15) || (vec[1] > 0 && r < 15) || (vec[1] < 0 && l < 15) ? 1 : 0;
+      onLine(`D ${f} ${r} ${b} ${l} ${simModeChar} ${blk}`);
+    }, 100);
+  } else {
+    if (simTimer) { clearInterval(simTimer); simTimer = null; }
+    link = null;
+    $('stat').textContent = 'ulanmagan';
+    $('stat').className = 'mut';
+  }
+}
+$('simBtn').onclick = () => toggleSim();
+
 function send(line) {
+  $('cmdPreview').textContent = 'Buyruq: ' + line;
   if (!link) return;
-  const l = link;  // buyruqlar ketma-ket yuborilsin
+  const l = link;
   sending = sending.then(() => l.write(enc.encode(line + '\n'))).catch(() => {});
 }
 
@@ -193,7 +302,6 @@ function onLine(l) {
   $('blk').textContent = tele.blocked ? '⛔' : '✓';
 }
 
-// Har 150 ms da joriy harakatni yuboramiz (Arduino 600 ms buyruqsiz qolsa o'zi to'xtaydi)
 setInterval(() => {
   const s = +$('speed').value;
   send(`V ${vec[0]*s|0} ${vec[1]*s|0} ${vec[2]*s*0.7|0}`);
@@ -236,7 +344,7 @@ function runRoute(st, name) {
   let i = 0, left = st[0].t * 1000;
   vec = st[0].v.split(',').map(Number);
   running = setInterval(() => {
-    if (tele.blocked) { $('runInfo').textContent = `${name}: yo'l to'silgan, kutyapman...`; return; } // vaqt to'xtab turadi
+    if (tele.blocked) { $('runInfo').textContent = `${name}: yo'l to'silgan, kutyapman...`; return; }
     left -= 100;
     if (left <= 0) {
       if (++i >= st.length) { stopRoute(); vec = [0,0,0]; $('runInfo').textContent = `${name}: yetib keldi ✓`; return; }
@@ -246,48 +354,149 @@ function runRoute(st, name) {
   }, 100);
 }
 
-// ---------- Ko'rish tizimi: chiziq bo'ylab yurish + QR stansiyalar ----------
+// ---------- Ko'rish tizimi: Ichki kamera, Tashqi USB kamera, IP kamera va Simulyator ----------
 const W = 160, H = 120;
 const work = document.createElement('canvas'); work.width = W; work.height = H;
 const wctx = work.getContext('2d', { willReadFrequently: true });
-const video = $('cam'), ov = $('ov'), octx = ov.getContext('2d');
-let camOn = false, line = null, lastSide = 1, qrBusy = false, lastQr = null, qrDetector = null, jsQR = null;
-let task = null;   // { dest, phase: 'follow' | 'turn', since }
+const video = $('cam'), ipImg = $('ipImg'), ov = $('ov'), octx = ov.getContext('2d');
+let camOn = false, camMode = 'video', line = null, lastSide = 1, qrBusy = false, lastQr = null, qrDetector = null, jsQR = null;
+let task = null, simAngle = 0;
+
+// Ulangan USB UVC va ichki kameralarni ro'yxatga olish
+async function listCameras() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    const sel = $('camSource');
+    const prev = sel.value;
+    sel.innerHTML = `
+      <option value="env">Orqa kamera (standart)</option>
+      <option value="user">Old kamera</option>
+      <option value="ip">Wi-Fi / IP kamera (URL)</option>
+      <option value="simcam">Virtual test kamera (Simulyator)</option>
+    `;
+    let usbIdx = 1;
+    devs.filter(d => d.kind === 'videoinput').forEach(d => {
+      if (!d.deviceId) return;
+      const opt = document.createElement('option');
+      opt.value = 'dev:' + d.deviceId;
+      opt.textContent = d.label || `Kamera #${usbIdx++} (USB / Ichki)`;
+      sel.appendChild(opt);
+    });
+    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+  } catch (e) {}
+}
+$('refreshCams').onclick = listCameras;
+$('camSource').onchange = () => {
+  $('ipCamRow').style.display = $('camSource').value === 'ip' ? 'flex' : 'none';
+};
+listCameras();
+
+async function ensureQrEngine() {
+  if (qrDetector || jsQR) return;
+  if ('BarcodeDetector' in window) {
+    try { qrDetector = new BarcodeDetector({ formats: ['qr_code'] }); return; } catch {}
+  }
+  await new Promise((ok, no) => {
+    if (window.jsQR) { jsQR = window.jsQR; return ok(); }
+    const sc = document.createElement('script'); sc.src = 'lib/jsQR.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc);
+  }).catch(() => {});
+  jsQR = window.jsQR;
+}
 
 $('camBtn').onclick = async () => {
   try {
-    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: 640, height: 480 }, audio: false });
-    video.srcObject = st; await video.play(); camOn = true;
-    ov.width = W; ov.height = H; $('camBtn').disabled = true;
-    if ('BarcodeDetector' in window) qrDetector = new BarcodeDetector({ formats: ['qr_code'] });
-    else { await new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lib/jsQR.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); }); jsQR = window.jsQR; }
+    await ensureQrEngine();
+    const src = $('camSource').value;
+    ov.width = W; ov.height = H;
+    if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+
+    if (src === 'simcam') {
+      camMode = 'simcam';
+      video.style.display = 'none';
+      ipImg.style.display = 'none';
+      ov.style.position = 'static';
+      ov.style.background = '#111';
+      ov.style.borderRadius = '10px';
+      camOn = true;
+      requestAnimationFrame(frame);
+      return;
+    }
+
+    ov.style.position = 'absolute';
+    ov.style.background = 'transparent';
+
+    if (src === 'ip') {
+      const url = $('ipCamUrl').value.trim();
+      if (!url) return alert('IP kamera manzilini kiriting (masalan: http://192.168.43.1:8080/video)');
+      camMode = 'ip';
+      video.style.display = 'none';
+      ipImg.style.display = 'block';
+      ipImg.src = url;
+      camOn = true;
+      requestAnimationFrame(frame);
+      return;
+    }
+
+    camMode = 'video';
+    ipImg.style.display = 'none';
+    video.style.display = 'block';
+    const videoConstraint = src.startsWith('dev:')
+      ? { deviceId: { exact: src.slice(4) }, width: { ideal: 640 }, height: { ideal: 480 } }
+      : { facingMode: src === 'user' ? 'user' : 'environment', width: { ideal: 640 }, height: { ideal: 480 } };
+
+    const st = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
+    video.srcObject = st;
+    await video.play();
+    await listCameras(); // Ruxsat olingach USB kamera nomlari chiqadi
+    camOn = true;
     requestAnimationFrame(frame);
   } catch (e) { alert('Kamera ochilmadi: ' + e.message); }
 };
 
-// Bir qatorda chiziq markazini topish (-1..1, chap..o'ng), topilmasa null
 function rowCenter(px, y0, y1, light) {
   let sum = 0, n = 0;
   for (let y = y0; y < y1; y++) for (let x = 0; x < W; x++) { const k = (y * W + x) * 4; sum += px[k] + px[k+1] + px[k+2]; n++; }
-  const mean = sum / n, thr = 3 * 40;   // fon o'rtachasidan kamida 40 birlik farq
+  const mean = sum / n, thr = 3 * 40;
   let sx = 0, c = 0;
   for (let y = y0; y < y1; y++) for (let x = 0; x < W; x++) {
     const k = (y * W + x) * 4, v = px[k] + px[k+1] + px[k+2];
     if (light ? v > mean + thr : v < mean - thr) { sx += x; c++; }
   }
   const rows = y1 - y0;
-  if (c < rows * 3 || c > rows * W * 0.6) return null;   // juda kam yoki butun ekran qorong'i
+  if (c < rows * 3 || c > rows * W * 0.6) return null;
   return (sx / c) / (W / 2) - 1;
+}
+
+function drawSimCamera() {
+  simAngle += 0.03;
+  wctx.fillStyle = $('lightLine').checked ? '#222' : '#ddd';
+  wctx.fillRect(0, 0, W, H);
+  wctx.strokeStyle = $('lightLine').checked ? '#fff' : '#111';
+  wctx.lineWidth = 18;
+  wctx.beginPath();
+  const shift = Math.sin(simAngle) * 22;
+  wctx.moveTo(W / 2 + shift * 0.5, 0);
+  wctx.lineTo(W / 2 + shift, H);
+  wctx.stroke();
 }
 
 function frame() {
   if (!camOn) return;
-  wctx.drawImage(video, 0, 0, W, H);
+  if (camMode === 'simcam') {
+    drawSimCamera();
+  } else if (camMode === 'ip') {
+    try { wctx.drawImage(ipImg, 0, 0, W, H); } catch (e) {}
+  } else {
+    wctx.drawImage(video, 0, 0, W, H);
+  }
   const px = wctx.getImageData(0, 0, W, H).data, light = $('lightLine').checked;
   const near = rowCenter(px, 95, 115, light), far = rowCenter(px, 55, 75, light);
   line = near === null ? null : { near, far: far === null ? near : far };
   if (line) lastSide = line.near >= 0 ? 1 : -1;
+
   octx.clearRect(0, 0, W, H);
+  if (camMode === 'simcam') octx.drawImage(work, 0, 0);
   octx.strokeStyle = '#ffd400'; octx.lineWidth = 1;
   [[55, 75], [95, 115]].forEach(([a, b]) => octx.strokeRect(0, a, W, b - a));
   if (line) {
@@ -295,7 +504,7 @@ function frame() {
     octx.beginPath(); octx.arc((line.near + 1) * W / 2, 105, 4, 0, 7); octx.fill();
     octx.beginPath(); octx.arc((line.far + 1) * W / 2, 65, 4, 0, 7); octx.fill();
   }
-  if (!qrBusy) scanQr();
+  if (!qrBusy && camMode !== 'simcam') scanQr();
   if (!task) $('visInfo').textContent = (line ? 'Chiziq ko\'rinyapti' : 'Chiziq ko\'rinmayapti') + (lastQr ? ` · QR: ${lastQr.text}` : '');
   requestAnimationFrame(frame);
 }
@@ -304,12 +513,13 @@ async function scanQr() {
   qrBusy = true;
   try {
     let hit = null;
-    if (qrDetector) {
-      const r = await qrDetector.detect(video);
-      if (r.length) hit = { text: r[0].rawValue.trim(), h: r[0].boundingBox.height / video.videoHeight };
+    const srcEl = camMode === 'ip' ? ipImg : video;
+    if (qrDetector && camMode === 'video') {
+      const r = await qrDetector.detect(srcEl);
+      if (r.length) hit = { text: r[0].rawValue.trim(), h: r[0].boundingBox.height / (video.videoHeight || 480) };
     } else if (jsQR) {
       const big = document.createElement('canvas'); big.width = 320; big.height = 240;
-      const bctx = big.getContext('2d'); bctx.drawImage(video, 0, 0, 320, 240);
+      const bctx = big.getContext('2d'); bctx.drawImage(srcEl, 0, 0, 320, 240);
       const r = jsQR(bctx.getImageData(0, 0, 320, 240).data, 320, 240);
       if (r) hit = { text: r.data.trim(), h: Math.abs(r.location.bottomLeftCorner.y - r.location.topLeftCorner.y) / 240 };
     }
@@ -322,7 +532,7 @@ function visionStep() {
   const s = task; if (!s) return;
   const base = 0.6;
   if (tele.blocked) { vec = [0, 0, 0]; $('visInfo').textContent = `${s.dest}: yo'l to'silgan, kutyapman...`; return; }
-  if (s.phase === 'turn') {   // orqaga qaytish uchun joyida ~180° burilish, keyin chiziqni topish
+  if (s.phase === 'turn') {
     vec = [0, 0, 0.6];
     if (Date.now() - s.since > 1500 && line && Math.abs(line.near) < 0.3) { s.phase = 'follow'; s.since = Date.now(); }
     $('visInfo').textContent = `${s.dest}: orqaga burilyapman...`;
@@ -333,14 +543,13 @@ function visionStep() {
     $('visInfo').textContent = `${s.dest}: yetib keldi ✓`; return;
   }
   if (!line) {
-    // chiziq yo'qoldi: 3 soniyagacha oxirgi ko'rgan tomonga sekin burilib qidiradi
     if (!s.lost) s.lost = Date.now();
     if (Date.now() - s.lost > 3000) { stopRoute(); vec = [0, 0, 0]; $('visInfo').textContent = 'Chiziq topilmadi, to\'xtadim'; return; }
     vec = [0, 0, 0.35 * lastSide]; $('visInfo').textContent = `${s.dest}: chiziqni qidiryapman...`; return;
   }
   s.lost = 0;
-  const angle = line.far - line.near;      // chiziq qiyaligi -> burilish
-  const off = line.near;                   // chiziq yon tomonda -> yonga siljish (mecanum)
+  const angle = line.far - line.near;
+  const off = line.near;
   vec = [base * (1 - Math.min(0.6, Math.abs(angle))), 0.5 * off, 0.8 * angle + 0.3 * off];
   $('visInfo').textContent = `${s.dest} ga ketyapman · ${line ? 'chiziq ✓' : ''}`;
 }
