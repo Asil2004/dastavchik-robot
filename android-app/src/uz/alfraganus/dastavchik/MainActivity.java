@@ -17,6 +17,7 @@ import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -69,9 +70,12 @@ public class MainActivity extends Activity {
         usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.CAMERA}, 101);
-            }
+            requestPermissions(new String[]{
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            }, 101);
         }
 
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
@@ -87,6 +91,7 @@ public class MainActivity extends Activity {
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setDatabaseEnabled(true);
+        ws.setGeolocationEnabled(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setAllowFileAccess(true);
         ws.setAllowContentAccess(true);
@@ -108,6 +113,7 @@ public class MainActivity extends Activity {
                         if (path.endsWith(".js")) mime = "application/javascript";
                         else if (path.endsWith(".css")) mime = "text/css";
                         else if (path.endsWith(".png")) mime = "image/png";
+                        else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) mime = "image/jpeg";
                         return new WebResourceResponse(mime, "UTF-8", is);
                     } catch (Exception e) {
                         return new WebResourceResponse("text/plain", "UTF-8", null);
@@ -126,6 +132,11 @@ public class MainActivity extends Activity {
                         request.grant(request.getResources());
                     }
                 });
+            }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                callback.invoke(origin, true, false);
             }
         });
 

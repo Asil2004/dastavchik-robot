@@ -1,64 +1,49 @@
-# Dastavchik robot: ulanish va ishga tushirish
+# 🛡️ «QALQON — ROBOT-PATRUL» (Navoiy viloyati IIB & NDKTU)
 
-## Tayyor ilovalar (APK va EXE) va Web manzil
-- **Android APK (Planshet / Smartfon uchun):** [`dist/dastavchik-robot.apk`](dist/dastavchik-robot.apk)
-- **Windows EXE (Kompyuterda test va boshqaruv uchun):** [`dist/DastavchikRobot.exe`](dist/DastavchikRobot.exe)
-- **Web boshqaruv paneli (GitHub Pages):** [https://asil2004.github.io/dastavchik-robot/planshet/index.html](https://asil2004.github.io/dastavchik-robot/planshet/index.html)
-- **QR stansiyalar chop etish:** [https://asil2004.github.io/dastavchik-robot/planshet/stansiyalar.html](https://asil2004.github.io/dastavchik-robot/planshet/stansiyalar.html)
+**Jamoat tartibini saqlash va patrullik faoliyatini takomillashtirishga mo'ljallangan avtonom ko'chma robot-stansiya**
 
-## Tuzilma
-Planshet (miya, ekran, marshrutlar)  --USB OTG kabel-->  Arduino Uno + L293D shield  -->  4 motor, 4 ta HC-SR04
+- **Buyurtmachi:** Navoiy viloyati Ichki ishlar boshqarmasi (IIB)
+- **Bajaruvchi:** Navoiy Davlat Konchilik va texnologiyalar universiteti (NDKTU)
 
-## Motorlar (L293D shield) — sizning ulanishingiz
-| Shield | G'ildirak |
-|---|---|
-| M1 | old-chap |
-| M2 | orqa-chap |
-| M3 | old-o'ng |
-| M4 | orqa-o'ng |
+![QALQON Konsepsiya 1](planshet/img/qalqon_1.jpg)
+![QALQON Konsepsiya 2](planshet/img/qalqon_2.jpg)
 
-"Oldinga" bosilganda qaysidir g'ildirak orqaga aylansa, kod boshidagi o'sha g'ildirakning `INV_..` qiymatini `true` qiling.
-Mecanum roliklari yuqoridan qaraganda "X" shaklini hosil qilishi kerak.
+---
 
-## Sensorlar (HC-SR04, 4 ta) — sizning ulanishingiz
-| Sensor | TRIG | ECHO |
-|---|---|---|
-| Old | A3 | A2 |
-| O'ng | 10 | 9 |
-| Orqa | A5 | A4 |
-| Chap | A1 | A0 |
+## 🚀 Tayyor Dasturlar va Onlayn Platforma
 
-Favqulodda STOP tugmasi (ixtiyoriy): pin 2 dan GND gacha. Bosilganda robot to'xtaydi.
+- 🌐 **«QALQON» IIB Situatsion Markaz va Bort Platformasi (GitHub Pages):**  
+  [https://asil2004.github.io/dastavchik-robot/planshet/index.html](https://asil2004.github.io/dastavchik-robot/planshet/index.html)
+- 📱 **Android APK (Bort plansheti / smartfon uchun):**  
+  [`dist/dastavchik-robot.apk`](https://github.com/Asil2004/dastavchik-robot/raw/main/dist/dastavchik-robot.apk)
+- 💻 **Windows EXE (Navoiy IIB Situatsion Markaz operatori uchun):**  
+  [`dist/DastavchikRobot.exe`](https://github.com/Asil2004/dastavchik-robot/raw/main/dist/DastavchikRobot.exe)
+- 🔧 **Arduino Uno + L293D Shassi Mikrodasturi:**  
+  [`firmware/robot_dastavchik/robot_dastavchik.ino`](firmware/robot_dastavchik/robot_dastavchik.ino)
 
-## Quvvat
-- Motorlarni Arduino USB tokidan EMAS, shield'dagi EXT_PWR kontaktidan oziqlantiring (2S Li-ion 7.4V yoki 6xAA).
-- Batareya ulanganda shield'dagi PWR jumperini olib qo'ying. Shunda Arduino planshet USB'sidan, motorlar batareyadan quvvat oladi.
-- Planshet USB orqali Arduino'ni quvvatlaydi (~50 mA), bu muammo emas.
+---
 
-## Ishga tushirish
-1. Arduino IDE: Library Manager orqali "Adafruit Motor Shield library" (V1) ni o'rnating.
-2. `firmware/robot_dastavchik/robot_dastavchik.ino` ni Uno'ga yuklang.
-3. Avval kompyuterda Serial Monitor (115200, Newline) yoki `dist/DastavchikRobot.exe` orqali tekshiring: `P` -> `OK`, `V 150 0 0` -> oldinga yuradi (0.6 s dan keyin o'zi to'xtaydi), `M A` -> avtonom rejim.
-4. Planshet yoki telefon (Android): `dist/dastavchik-robot.apk` ilovasini o'rnating yoki Google Chrome'da `planshet/index.html` sahifasini https manzildan oching.
-   OTG kabel bilan Arduino'ni ulang, "USB ga ulanish" tugmasini bosing va ruxsat bering.
-   Asl Arduino Uno ham, CH340 chipli klon ham ishlaydi. Ulanganda Arduino qayta yuklanadi, 2 soniya kuting.
-5. **Arduinosiz test qilish:** `Simulyator (Test)` tugmasini hamda kamerada `Virtual test kamera (Simulyator)` rejimini tanlab, robot ulanmagan holda ham barcha funksiyalarni tekshirishingiz mumkin.
+## 📋 Asosiy Funksional Modullar (Texnik Topshiriq 1–17 bo'limlar asosida)
 
-## Tashqi kamera ulash usullari
-Smartfon yoki planshet robotning tepasida qulay burchakda tursa, polga qaratilgan **tashqi kamerani** 2 xil usulda ulash mumkin:
-1. **USB Web-kamera / Endoskop (UVC kamera) — USB OTG Hub orqali:**
-   - Smartfonga **USB OTG Hub** (razvetvitel) ulanadi: birinchi portga Arduino Uno, ikkinchi portga USB veb-kamera ulanadi.
-   - Boshqaruv panelidagi kamera ro'yxatidan (`🔄` tugmasini bosib) ulangan USB kamerani tanlaysiz va **"Kamerani yoqish"** tugmasini bosasiz.
-2. **Wi-Fi / IP Kamera (ESP32-CAM yoki ikkinchi smartfon):**
-   - Robotning pastki qismiga **ESP32-CAM** yoki ikkinchi telefon (*IP Webcam* ilovasi bilan) o'rnatiladi.
-   - Kamera ro'yxatidan **"Wi-Fi / IP kamera (URL)"** ni tanlab, oqim manzilini (`http://192.168.43.1:8080/video`) kiritasiz.
+1. **🚔 1-Bo'lim: Situatsion Markaz va 3D Avtonom Patrul:**
+   - **3D Shahar / Xiyobon Patrul Xaritasi:** `P1: Xiyobon markazi` → `P2: Savdo majmuasi` → `P3: Maktab hududi` → `P4: Mahalla posti` bo'ylab tinimsiz halqali avtonom patrullik (`A*` + ultratovush to'siqdan qochish).
+   - **📡 3D SLAM (Avto-Xarita Chizish):** 4 ta ultratovush datchigi va giroskop/LiDAR yordamida noma'lum hududni skanerlab, 3D xaritaga tushirish.
+   - **⚡ Avtomatik Quvvatlash Stansiyasi (`DOCK`):** Akkumulyator quvvati `< 20%` bo'lganda avtomatik stansiyaga qaytish va quvvatlash (`24.8V BMS` monitoringi).
+   - **🛰️ Real GPS/GLONASS + Giroskop:** Ko'chada harakatlanish uchun sun'iy yo'ldosh koordinatalari va kurs burchagi.
+   - **📹 360° AI Videokuzatuv va Hodisalarni Erta Aniqlash:**
+     - Real vaqtda kamera oqimi + **🌙 Tungi infraqizil (Night Vision)** rejim;
+     - **🎯 AI Harakat detektori** va shubhali holatlarni qayd etish;
+     - **🔊 Akustik shovqin datchigi (`> 75 dB`)** — baqiriq yoki favqulodda shovqinni aniqlash;
+     - **⚠️ Korpusga zarba / tegish datchigi (Tamper)** — akselerometr orqali ruxsatsiz ta'sirni sezish;
+     - **📢 Politsiya Megafoni (Ovozli e'lonlar va Sirena)** + **📋 Hodisalar Jurnali**.
 
-## Xavfsizlik qoidalari (Arduino ichida, planshet nima desa ham ishlaydi)
-- Qaysi tomonda to'siq 15 sm dan yaqin bo'lsa, o'sha tomonga yurmaydi. 45 sm dan yaqin bo'lsa sekinlashadi.
-- Planshetdan 0.6 s buyruq kelmasa (kabel chiqib ketsa, ilova yopilsa) robot to'xtaydi.
+2. **🆘 2-Bo'lim: Fuqaro Bort Ekrani (Interaktiv SOS Kiosk):**
+   - Robot korpusidagi ekranda fuqarolar uchun katta **🚨 SOS — OPERATOR BILAN BOG'LANISH** tugmasi hamda `102 (IIB)`, `103 (Tez yordam)`, `101 (FVV)` va `Yo'qolgan shaxs/buyum` tezkor murojaat tugmalari.
 
-## Ko'rish tizimi (kamera)
-- **Chiziq:** polga 3–5 sm enli qora izolenta yopishtiring (to'q polda oq lenta ishlating va "Chiziq och rangli" belgisini qo'ying). Robot chiziq bo'ylab yuradi. Mecanum g'ildiraklar tufayli chiziqdan chetga chiqsa, yonga siljib tuzatadi.
-- **Stansiyalar:** `stansiyalar.html` sahifasida QR kodlarni chop eting (BAZA, 101, 102...). Ularni chiziq yonidagi devorga, kamera ko'radigan balandlikda yopishtiring.
-- **Yetkazish:** "Kamerani yoqish" tugmasini bosing, manzilga 101 deb yozing va "Yetkazish" tugmasini bosing. Robot chiziq bo'ylab yuradi va 101 QR kodiga yetganda to'xtaydi.
-- **Qaytish:** "Bazaga qaytish" tugmasi bosilganda robot 180° burilib, chiziq bo'ylab BAZA QR kodigacha qaytadi.
+3. **📐 3-Bo'lim: 3D Konsepsiya va Muhandislik Chizmalari:**
+   - Yarimsferasimon korpus (`70 × 70 × 50 sm`) va Minora (`140 × 80 sm`) plakatlari;
+   - Old, Orqa, Yon va Yuqoridan o'lchamli texnik chizmalar (SVG CAD);
+   - Ichki komponentlar komponovkasi va elektron bloklar ulanish sxemasi.
+
+4. **📄 4-Bo'lim: Rasmiy Texnik Topshiriq va Sinov Bayonnomasi:**
+   - Navoiy viloyati IIB va NDKTU o'rtasidagi to'liq Texnik Topshiriq hamda 12-bandlik interaktiv Qabul Qilish Sinov Bayonnomasi (**🖨️ Chop etish / PDF saqlash** imkoniyati bilan).

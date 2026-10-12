@@ -16,7 +16,7 @@ namespace DastavchikRobot
     public class MainForm : Form
     {
         private ComboBox cmbPorts;
-        private Button btnRefresh, btnConnect, btnSim, btnMode, btnStop, btnOpenWeb, btnOpenQr;
+        private Button btnRefresh, btnConnect, btnSim, btnMode, btnStop, btnOpenWeb, btnOpenDocs;
         private TrackBar trkSpeed;
         private Label lblSpeed, lblStatus, lblCmd, lblSF, lblSR, lblSB, lblSL, lblBlk;
         private SerialPort serial;
@@ -32,11 +32,11 @@ namespace DastavchikRobot
 
         public MainForm()
         {
-            Text = "Dastavchik Robot — Desktop Boshqaruv va Test Dasturi";
+            Text = "QALQON — Robot-Patrul | Navoiy viloyati IIB Situatsion Markazi";
             Size = new Size(760, 520);
             StartPosition = FormStartPosition.CenterScreen;
-            BackColor = Color.FromArgb(17, 20, 24);
-            ForeColor = Color.FromArgb(232, 238, 244);
+            BackColor = Color.FromArgb(13, 17, 23);
+            ForeColor = Color.FromArgb(230, 237, 243);
             Font = new Font("Segoe UI", 10f, FontStyle.Regular);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
@@ -53,7 +53,6 @@ namespace DastavchikRobot
             uiTimer.Tick += (s, e) => UpdateTelemetryUi();
             uiTimer.Start();
 
-            // Avtomatik Edge/Chrome App oynasini ham ochish (kamera va QR uchun)
             Shown += (s, e) => OpenAppWindow("/index.html");
         }
 
@@ -61,59 +60,57 @@ namespace DastavchikRobot
         {
             var lblTitle = new Label
             {
-                Text = "Dastavchik Robot (Windows EXE)",
-                Font = new Font("Segoe UI", 14f, FontStyle.Bold),
+                Text = "🚔 QALQON — ROBOT-PATRUL (Navoiy IIB)",
+                Font = new Font("Segoe UI", 13.5f, FontStyle.Bold),
                 Location = new Point(16, 14),
                 AutoSize = true
             };
             lblStatus = new Label
             {
                 Text = "ulanmagan",
-                BackColor = Color.FromArgb(42, 50, 60),
-                ForeColor = Color.FromArgb(138, 151, 166),
-                Location = new Point(340, 16),
-                Size = new Size(150, 26),
+                BackColor = Color.FromArgb(33, 38, 45),
+                ForeColor = Color.FromArgb(139, 148, 158),
+                Location = new Point(420, 15),
+                Size = new Size(160, 26),
                 TextAlign = ContentAlignment.MiddleCenter
             };
             Controls.Add(lblTitle);
             Controls.Add(lblStatus);
 
-            // Left Card: Connection + Pad
             var cardLeft = CreateCard(16, 52, 360, 410);
             cmbPorts = new ComboBox
             {
                 Location = new Point(12, 14),
                 Size = new Size(110, 28),
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                BackColor = Color.FromArgb(42, 50, 60),
+                BackColor = Color.FromArgb(33, 38, 45),
                 ForeColor = Color.White
             };
-            btnRefresh = CreateBtn("🔄", 128, 12, 42, 32, Color.FromArgb(42, 50, 60));
+            btnRefresh = CreateBtn("🔄", 128, 12, 42, 32, Color.FromArgb(33, 38, 45));
             btnRefresh.Click += (s, e) => RefreshPorts();
 
-            btnConnect = CreateBtn("COM ulanish", 176, 12, 170, 32, Color.FromArgb(47, 156, 244));
+            btnConnect = CreateBtn("COM ulanish", 176, 12, 170, 32, Color.FromArgb(47, 129, 247));
             btnConnect.Click += (s, e) => ToggleSerial();
 
-            btnSim = CreateBtn("Simulyator (Test)", 12, 52, 158, 34, Color.FromArgb(42, 50, 60));
+            btnSim = CreateBtn("3D Patrul Simulyator", 12, 52, 158, 34, Color.FromArgb(33, 38, 45));
             btnSim.Click += (s, e) => ToggleSim();
 
-            btnMode = CreateBtn("Rejim: Planshet", 176, 52, 110, 34, Color.FromArgb(42, 50, 60));
+            btnMode = CreateBtn("Rejim: Operator", 176, 52, 110, 34, Color.FromArgb(33, 38, 45));
             btnMode.Click += (s, e) =>
             {
                 robotMode = robotMode == 'T' ? 'A' : 'T';
                 SendLine("M " + robotMode);
             };
 
-            btnStop = CreateBtn("STOP", 292, 52, 54, 34, Color.FromArgb(255, 90, 90));
+            btnStop = CreateBtn("STOP", 292, 52, 54, 34, Color.FromArgb(248, 81, 73));
             btnStop.Click += (s, e) => { vx = vy = vw = 0; SendLine("S"); SendLine("M T"); robotMode = 'T'; };
 
-            lblSpeed = new Label { Text = "Tezlik: 170", Location = new Point(12, 96), AutoSize = true, ForeColor = Color.FromArgb(138, 151, 166) };
-            trkSpeed = new TrackBar { Minimum = 80, Maximum = 255, Value = 170, Location = new Point(100, 90), Size = new Size(240, 36), TickStyle = TickStyle.None };
+            lblSpeed = new Label { Text = "Tezlik: 165", Location = new Point(12, 96), AutoSize = true, ForeColor = Color.FromArgb(139, 148, 158) };
+            trkSpeed = new TrackBar { Minimum = 80, Maximum = 255, Value = 165, Location = new Point(100, 90), Size = new Size(240, 36), TickStyle = TickStyle.None };
             trkSpeed.Scroll += (s, e) => lblSpeed.Text = "Tezlik: " + trkSpeed.Value;
 
             cardLeft.Controls.AddRange(new Control[] { cmbPorts, btnRefresh, btnConnect, btnSim, btnMode, btnStop, lblSpeed, trkSpeed });
 
-            // Directional Pad
             var dirs = new Tuple<string, int, int, int>[]
             {
                 Tuple.Create("↖", 1, -1, 0), Tuple.Create("▲", 1, 0, 0), Tuple.Create("↗", 1, 1, 0),
@@ -126,7 +123,7 @@ namespace DastavchikRobot
             {
                 if (dirs[i] == null) continue;
                 int r = i / 3, c = i % 3;
-                var b = CreateBtn(dirs[i].Item1, 12 + c * 114, 134 + r * 60, 106, 54, Color.FromArgb(42, 50, 60));
+                var b = CreateBtn(dirs[i].Item1, 12 + c * 114, 134 + r * 60, 106, 54, Color.FromArgb(33, 38, 45));
                 b.Font = new Font("Segoe UI Symbol", 16f, FontStyle.Bold);
                 int dx = dirs[i].Item2, dy = dirs[i].Item3, dw = dirs[i].Item4;
                 b.MouseDown += (s, e) => { vx = dx; vy = dy; vw = dw; };
@@ -134,13 +131,12 @@ namespace DastavchikRobot
                 cardLeft.Controls.Add(b);
             }
 
-            lblCmd = new Label { Text = "Buyruq: V 0 0 0", Location = new Point(12, 380), AutoSize = true, ForeColor = Color.FromArgb(138, 151, 166) };
+            lblCmd = new Label { Text = "Buyruq: V 0 0 0", Location = new Point(12, 380), AutoSize = true, ForeColor = Color.FromArgb(139, 148, 158) };
             cardLeft.Controls.Add(lblCmd);
             Controls.Add(cardLeft);
 
-            // Right Card: Sensors + Web/Camera Panel
             var cardRight = CreateCard(390, 52, 340, 410);
-            var lblSensTitle = new Label { Text = "Sensorlar (sm)", Font = new Font("Segoe UI", 11f, FontStyle.Bold), Location = new Point(14, 12), AutoSize = true };
+            var lblSensTitle = new Label { Text = "Perimetr Sensorlari (sm)", Font = new Font("Segoe UI", 11f, FontStyle.Bold), Location = new Point(14, 12), AutoSize = true };
             cardRight.Controls.Add(lblSensTitle);
 
             lblSF = CreateSensorBox(122, 44);
@@ -152,32 +148,38 @@ namespace DastavchikRobot
 
             var lblHint = new Label
             {
-                Text = "Kamera (ichki / USB / IP), Chiziq bo'ylab yurish, QR kodlar va Marshrutlar oynasi:",
+                Text = "«QALQON» IIB Situatsion Markazi, 3D Patrul Xaritasi, SOS, Kamera va Muhandislik Chizmalari:",
                 Location = new Point(14, 212),
                 Size = new Size(312, 42),
-                ForeColor = Color.FromArgb(138, 151, 166)
+                ForeColor = Color.FromArgb(139, 148, 158)
             };
-            btnOpenWeb = CreateBtn("📷 Kamera va Web-Panelni Ochish", 14, 260, 312, 44, Color.FromArgb(47, 156, 244));
+            btnOpenWeb = CreateBtn("🚔 «QALQON» Situatsion Markazni Ochish", 14, 260, 312, 44, Color.FromArgb(47, 129, 247));
             btnOpenWeb.Click += (s, e) => OpenAppWindow("/index.html");
 
-            btnOpenQr = CreateBtn("🖨️ QR Stansiyalar (Chop etish)", 14, 314, 312, 40, Color.FromArgb(42, 50, 60));
-            btnOpenQr.Click += (s, e) => OpenAppWindow("/stansiyalar.html");
+            btnOpenDocs = CreateBtn("🚨 Mayoqcha / Sirena (Pin 13)", 14, 314, 312, 40, Color.FromArgb(210, 50, 60));
+            bool beaconState = false;
+            btnOpenDocs.Click += (s, e) =>
+            {
+                beaconState = !beaconState;
+                SendLine(beaconState ? "L 1" : "L 0");
+                btnOpenDocs.Text = beaconState ? "🚨 Mayoqcha: YOQIQ (O'chirish)" : "🚨 Mayoqcha / Sirena (Pin 13)";
+            };
 
             var lblServerInfo = new Label
             {
-                Text = "Lokal server: http://127.0.0.1:" + httpPort,
+                Text = "Situatsion Markaz Serveri: http://127.0.0.1:" + httpPort,
                 Location = new Point(14, 368),
                 AutoSize = true,
-                ForeColor = Color.FromArgb(60, 207, 122)
+                ForeColor = Color.FromArgb(46, 160, 67)
             };
 
-            cardRight.Controls.AddRange(new Control[] { lblHint, btnOpenWeb, btnOpenQr, lblServerInfo });
+            cardRight.Controls.AddRange(new Control[] { lblHint, btnOpenWeb, btnOpenDocs, lblServerInfo });
             Controls.Add(cardRight);
         }
 
         private Panel CreateCard(int x, int y, int w, int h)
         {
-            return new Panel { Location = new Point(x, y), Size = new Size(w, h), BackColor = Color.FromArgb(28, 33, 40) };
+            return new Panel { Location = new Point(x, y), Size = new Size(w, h), BackColor = Color.FromArgb(22, 27, 34) };
         }
 
         private Button CreateBtn(string text, int x, int y, int w, int h, Color bg)
@@ -202,7 +204,7 @@ namespace DastavchikRobot
                 Text = "–",
                 Location = new Point(x, y),
                 Size = new Size(96, 44),
-                BackColor = Color.FromArgb(42, 50, 60),
+                BackColor = Color.FromArgb(33, 38, 45),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 12f, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter
@@ -224,13 +226,13 @@ namespace DastavchikRobot
                 serial = null;
                 btnConnect.Text = "COM ulanish";
                 lblStatus.Text = "uzildi";
-                lblStatus.BackColor = Color.FromArgb(42, 50, 60);
-                lblStatus.ForeColor = Color.FromArgb(138, 151, 166);
+                lblStatus.BackColor = Color.FromArgb(33, 38, 45);
+                lblStatus.ForeColor = Color.FromArgb(139, 148, 158);
                 return;
             }
             if (cmbPorts.SelectedItem == null)
             {
-                MessageBox.Show("COM port topilmadi. USB kabelni tekshiring yoki 'Simulyator (Test)' tugmasini bosing.", "Xabar");
+                MessageBox.Show("COM port topilmadi. USB kabelni tekshiring yoki '3D Patrul Simulyator' tugmasini bosing.", "Xabar");
                 return;
             }
             try
@@ -241,8 +243,8 @@ namespace DastavchikRobot
                 serial.Open();
                 btnConnect.Text = "Uzish (" + serial.PortName + ")";
                 lblStatus.Text = "ulangan (" + serial.PortName + ")";
-                lblStatus.BackColor = Color.FromArgb(60, 207, 122);
-                lblStatus.ForeColor = Color.Black;
+                lblStatus.BackColor = Color.FromArgb(46, 160, 67);
+                lblStatus.ForeColor = Color.White;
             }
             catch (Exception ex)
             {
@@ -257,14 +259,14 @@ namespace DastavchikRobot
             {
                 dist = new int[] { 120, 95, 150, 80 };
                 lblStatus.Text = "simulyator (test)";
-                lblStatus.BackColor = Color.FromArgb(245, 166, 35);
+                lblStatus.BackColor = Color.FromArgb(210, 153, 34);
                 lblStatus.ForeColor = Color.Black;
             }
             else
             {
                 lblStatus.Text = "ulanmagan";
-                lblStatus.BackColor = Color.FromArgb(42, 50, 60);
-                lblStatus.ForeColor = Color.FromArgb(138, 151, 166);
+                lblStatus.BackColor = Color.FromArgb(33, 38, 45);
+                lblStatus.ForeColor = Color.FromArgb(139, 148, 158);
             }
         }
 
@@ -324,13 +326,13 @@ namespace DastavchikRobot
             UpdateSensorLabel(lblSB, dist[2]);
             UpdateSensorLabel(lblSL, dist[3]);
             lblBlk.Text = blocked ? "⛔" : "✓";
-            btnMode.Text = "Rejim: " + (robotMode == 'A' ? "Avtonom" : "Planshet");
+            btnMode.Text = "Rejim: " + (robotMode == 'A' ? "Avtonom" : "Operator");
         }
 
         private void UpdateSensorLabel(Label lbl, int d)
         {
             lbl.Text = d >= 999 ? "—" : d.ToString();
-            lbl.BackColor = d < 15 ? Color.FromArgb(255, 90, 90) : Color.FromArgb(42, 50, 60);
+            lbl.BackColor = d < 15 ? Color.FromArgb(248, 81, 73) : Color.FromArgb(33, 38, 45);
         }
 
         private void StartLocalServer()
@@ -405,7 +407,9 @@ namespace DastavchikRobot
 
                 if (path == "/") path = "/index.html";
                 string resName = path.TrimStart('/').Replace('/', '.');
-                string mime = path.EndsWith(".js") ? "application/javascript; charset=utf-8" : "text/html; charset=utf-8";
+                string mime = "text/html; charset=utf-8";
+                if (path.EndsWith(".js")) mime = "application/javascript; charset=utf-8";
+                else if (path.EndsWith(".jpg") || path.EndsWith(".jpeg")) mime = "image/jpeg";
 
                 using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream(resName))
                 {
@@ -444,7 +448,7 @@ namespace DastavchikRobot
             {
                 if (File.Exists(br))
                 {
-                    Process.Start(br, "--app=" + url + " --window-size=980,720");
+                    Process.Start(br, "--app=" + url + " --window-size=1280,820");
                     return;
                 }
             }
